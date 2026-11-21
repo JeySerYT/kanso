@@ -1,8 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, dirname } from 'node:path'
+import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 process.env.KANSO_OPENCODE_URL = 'http://127.0.0.1:9'
@@ -13,9 +14,14 @@ const { openStore } = await import('../src/store.js')
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const version = readFileSync(join(root, 'VERSION'), 'utf8').trim()
 
-async function withServer(t) {
+async function withServer(t, options = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'kanso-http-'))
-  const handle = await startServer({ port: 0, dbPath: join(dir, 'board.db') })
+  const handle = await startServer({
+    port: 0,
+    dbPath: join(dir, 'board.db'),
+    roots: [],
+    ...options,
+  })
   const base = `http://127.0.0.1:${handle.port}`
   const call = async (path, options = {}) => {
     const response = await fetch(base + path, {
@@ -30,7 +36,7 @@ async function withServer(t) {
     await handle.close()
     rmSync(dir, { recursive: true, force: true })
   })
-  return { call, base }
+  return { call, base, dir }
 }
 
 test('health отдаёт версию из VERSION', async (t) => {
@@ -195,4 +201,82 @@ test('доска отдаёт треды после пересечения пу�
   const board = await call('/api/board')
   assert.equal(board.body.threads.length, 1)
   assert.equal(board.body.threads[0].path, 'src/components/Hero.tsx')
+})
+
+test('задача хранит ветку, а метки живут в реестре', async (t) => {
+  const { call } = await withServer(t)
+
+  const label = await call('/api/labels', {
+    method: 'POST',
+    body: { name: 'ui', color: '#8ec8ff' },
+  })
+  assert.equal(label.status, 201)
+  assert.equal(label.body.label.name, 'ui')
+  assert.equal(label.body.label.color, '#8ec8ff')
+
+  const duplicate = await call('/api/labels', {
+    method: 'POST',
+    body: { name: 'ui', color: '#ff0000' },
+  })
+  assert.equal(duplicate.body.label.color, '#8ec8ff')
+
+  const created = await call('/api/tasks', {
+    method: 'POST',
+    body: {
+      title: 'Починить сайдбар',
+      project: 'DashBoard',
+      branch: 'feat/sidebar',
+      priority: 4,
+      labels: ['ui', 'ui'],
+    },
+  })
+  assert.equal(created.status, 201)
+  assert.equal(created.body.task.branch, 'feat/sidebar')
+  assert.equal(created.body.task.priority, 4)
+  assert.deepEqual(created.body.task.labels, ['ui'])
+
+  const board = await call('/api/board')
+  assert.deepEqual(board.body.labels.map((item) => item.name), ['ui'])
+  assert.equal(board.body.tasks[0].branch, 'feat/sidebar')
+})
+
+test('приоритет вне диапазона p0–p4 отклоняется', async (t) => {
+  const { call } = await withServer(t)
+
+  const created = await call('/api/tasks', {
+    method: 'POST',
+    body: { title: 'Слишком важная', priority: 5 },
+  })
+
+  assert.equal(created.status, 400)
+  assert.equal(created.body.error, 'priority_out_of_range')
+})
+
+test('API проектов находит git-репозитории и ветки', async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'kanso-projects-'))
+  const repo = join(dir, 'Demo')
+  mkdirSync(repo)
+  execFileSync('git', ['init', '-b', 'main'], { cwd: repo, stdio: 'ignore' })
+  writeFileSync(join(repo, 'file.txt'), 'one')
+  execFileSync('git', ['add', '.'], { cwd: repo, stdio: 'ignore' })
+  execFileSync(
+    'git',
+    ['-c', 'user.email=test@example.com', '-c', 'user.name=Test', 'commit', '-m', 'init'],
+    { cwd: repo, stdio: 'ignore' },
+  )
+  execFileSync('git', ['branch', 'feature'], { cwd: repo, stdio: 'ignore' })
+
+  const handle = await startServer({ port: 0, dbPath: join(dir, 'board.db'), roots: [dir] })
+  t.after(async () => {
+    await handle.close()
+    rmSync(dir, { recursive: true, force: true })
+  })
+  const response = await fetch(`http://127.0.0.1:${handle.port}/api/projects`)
+  const body = await response.json()
+
+  assert.equal(response.status, 200)
+  const project = body.projects.find((item) => item.name === 'Demo')
+  assert.ok(project)
+  assert.equal(project.current_branch, 'main')
+  assert.deepEqual(project.branches.sort(), ['feature', 'main'])
 })

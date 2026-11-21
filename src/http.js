@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url'
 
 import { openStore } from './store.js'
 import { sendPrompt } from './opencode-client.js'
+import { createProjectIndex, defaultRoots } from './git.js'
+import { resolveLocale, translator } from './i18n.js'
 
 const ROOT = join(fileURLToPath(new URL('..', import.meta.url)))
 const WEB_ROOT = join(ROOT, 'web')
@@ -74,8 +76,11 @@ export async function startServer({
   host = '127.0.0.1',
   dbPath,
   watchInterval = 1000,
+  roots,
 } = {}) {
   const store = openStore(dbPath)
+  const t = translator(resolveLocale())
+  const projects = createProjectIndex({ roots: roots ?? defaultRoots() })
   const clients = new Set()
   let revision = 1
   let knownDataVersion = store.dataVersion()
@@ -117,6 +122,7 @@ export async function startServer({
       tasks,
       threads: store.listThreads(),
       sessions: store.listSessions(),
+      labels: store.listLabels(),
       revision,
       version: VERSION,
     }
@@ -131,6 +137,30 @@ export async function startServer({
 
     if (req.method === 'GET' && pathname === '/api/board') {
       return sendJson(res, 200, boardPayload())
+    }
+
+    if (req.method === 'GET' && pathname === '/api/labels') {
+      return sendJson(res, 200, { labels: store.listLabels() })
+    }
+
+    if (req.method === 'POST' && pathname === '/api/labels') {
+      const body = await readBody(req)
+      const label = store.createLabel(body)
+      broadcast('label.created', { name: label.name })
+      return sendJson(res, 201, { label })
+    }
+
+    if (req.method === 'GET' && pathname === '/api/projects') {
+      const discovered = projects({ force: searchParams.get('refresh') === '1' })
+      const byName = new Map()
+      for (const repository of discovered) byName.set(repository.name, repository)
+      for (const name of store.listProjects()) {
+        if (!byName.has(name)) {
+          byName.set(name, { name, path: '', current_branch: '', branches: [] })
+        }
+      }
+      const list = [...byName.values()].sort((a, b) => a.name.localeCompare(b.name))
+      return sendJson(res, 200, { projects: list })
     }
 
     if (req.method === 'GET' && pathname === '/api/events') {
@@ -188,7 +218,7 @@ export async function startServer({
         const thread = result.thread
         void notifySessions(
           thread.sessions,
-          `Kanso: тред ${thread.id} по пути ${thread.path} в тупике. Спроси человека и запиши решение: kanso comment ${thread.task_a} "..."`,
+          t('server.deadlock', { thread: thread.id, path: thread.path, task: thread.task_a }),
         )
       }
       return sendJson(res, 200, result)
@@ -260,9 +290,12 @@ export async function startServer({
         if (!result.ok) {
           if (result.code === 'needs_agreement') {
             broadcast('thread.opened', { thread: result.thread.id })
-            const text =
-              `Kanso: путь ${result.path} пересекается с ${result.owner.task_id} (${result.owner.session}). ` +
-              `Ответь: kanso reply ${result.thread.id} take-now|wait|split|escalate`
+            const text = t('server.conflict', {
+              path: result.path,
+              task: result.owner.task_id,
+              session: result.owner.session,
+              thread: result.thread.id,
+            })
             void notifySessions([who.session, result.owner.session], text)
           }
           const status = result.code === 'path_locked' ? 409 : 409

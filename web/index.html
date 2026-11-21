@@ -9,58 +9,91 @@
     <link rel="stylesheet" href="/board.css">
   </head>
   <body>
-    <a class="skip-link" href="#board">К задачам</a>
+    <a class="skip-link" href="#board" data-i18n="app.skip">К задачам</a>
     <div class="atmosphere" aria-hidden="true"></div>
 
-    <header class="topbar">
-      <div class="brand">
-        <span class="brand-mark" aria-hidden="true"><span>簡</span></span>
-        <span class="brand-name">Kanso</span>
-        <span class="brand-version" id="version">—</span>
+    <div class="app">
+      <aside class="sidebar" data-i18n-aria-label="sidebar.aria" aria-label="Панель управления">
+        <div class="sidebar-head">
+          <div class="brand">
+            <span class="brand-mark" aria-hidden="true"><span>簡</span></span>
+            <span class="brand-name">Kanso</span>
+          </div>
+
+          <button class="button button-primary new-task" id="new-task" type="button">
+            <span data-i18n="sidebar.newTask">Новая задача</span>
+            <span class="button-icon" aria-hidden="true">
+              <svg class="icon" viewBox="0 0 20 20"><path d="M10 4.5v11M4.5 10h11"></path></svg>
+            </span>
+          </button>
+
+          <label class="search" for="search">
+            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
+              <circle cx="8.75" cy="8.75" r="5.25"></circle>
+              <path d="m12.7 12.7 3.8 3.8"></path>
+            </svg>
+            <input
+              id="search"
+              type="search"
+              placeholder="Поиск по задачам"
+              data-i18n-placeholder="sidebar.search"
+              data-i18n-aria-label="sidebar.search"
+              aria-label="Поиск по задачам"
+              autocomplete="off"
+              spellcheck="false"
+            >
+            <kbd aria-hidden="true">/</kbd>
+          </label>
+        </div>
+
+        <section class="side-section" id="projects-section">
+          <header class="side-head">
+            <h2 data-i18n="sidebar.projects">Проекты</h2>
+          </header>
+          <nav class="filters" id="filters" aria-label="Фильтр по проекту"></nav>
+        </section>
+
+        <div class="sidebar-foot">
+          <label class="language">
+            <span data-i18n="sidebar.language">Язык</span>
+            <select
+              id="language"
+              data-i18n-aria-label="sidebar.languageAria"
+              aria-label="Язык интерфейса"
+            >
+              <option value="ru">Русский</option>
+              <option value="en">English</option>
+            </select>
+          </label>
+
+          <p class="connection" id="connection" role="status" aria-live="polite">
+            <span class="connection-dot" aria-hidden="true"></span>
+            <span id="connection-text" data-i18n="connection.connecting">подключение</span>
+          </p>
+
+          <span class="brand-version" id="version">—</span>
+        </div>
+      </aside>
+
+      <div class="workspace">
+        <section class="empty-board" id="empty-board" hidden aria-labelledby="empty-title">
+          <span class="eyebrow" data-i18n="empty.eyebrow">Пустая очередь</span>
+          <h1 id="empty-title" data-i18n="empty.title">Задачи начинаются здесь</h1>
+          <p data-i18n="empty.text">Одна очередь на все проекты. Сессия OpenCode берёт задачу в работу через аренду, а при пересечении файлов договаривается со второй сессией.</p>
+          <div class="empty-actions">
+            <button class="button button-primary" id="empty-create" type="button">
+              <span data-i18n="empty.create">Создать первую</span>
+              <span class="button-icon" aria-hidden="true">
+                <svg class="icon" viewBox="0 0 20 20"><path d="M10 4.5v11M4.5 10h11"></path></svg>
+              </span>
+            </button>
+            <code data-i18n="empty.hint">kanso new "Название" --project Проект</code>
+          </div>
+        </section>
+
+        <main class="board" id="board" aria-label="Канбан-доска"></main>
       </div>
-
-      <div class="topbar-tools">
-        <label class="search" for="search">
-          <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
-            <circle cx="8.75" cy="8.75" r="5.25"></circle>
-            <path d="m12.7 12.7 3.8 3.8"></path>
-          </svg>
-          <input id="search" type="search" placeholder="Поиск по задачам" autocomplete="off" spellcheck="false">
-          <kbd aria-hidden="true">/</kbd>
-        </label>
-
-        <p class="connection" id="connection" role="status" aria-live="polite">
-          <span class="connection-dot" aria-hidden="true"></span>
-          <span id="connection-text">подключение</span>
-        </p>
-
-        <button class="button button-primary" id="new-task" type="button">
-          <span>Новая задача</span>
-          <span class="button-icon" aria-hidden="true">
-            <svg class="icon" viewBox="0 0 20 20"><path d="M10 4.5v11M4.5 10h11"></path></svg>
-          </span>
-        </button>
-      </div>
-    </header>
-
-    <nav class="filters" id="filters" aria-label="Фильтр по проекту"></nav>
-
-    <section class="empty-board" id="empty-board" hidden aria-labelledby="empty-title">
-      <span class="eyebrow">Пустая очередь</span>
-      <h1 id="empty-title">Задачи начинаются здесь</h1>
-      <p>Одна очередь на все проекты. Сессия OpenCode берёт задачу в работу через аренду, а при пересечении файлов договаривается со второй сессией.</p>
-      <div class="empty-actions">
-        <button class="button button-primary" id="empty-create" type="button">
-          <span>Создать первую</span>
-          <span class="button-icon" aria-hidden="true">
-            <svg class="icon" viewBox="0 0 20 20"><path d="M10 4.5v11M4.5 10h11"></path></svg>
-          </span>
-        </button>
-        <code>kanso new "Название" --project Проект</code>
-      </div>
-    </section>
-
-    <main class="board" id="board" aria-label="Канбан-доска"></main>
+    </div>
 
     <p class="visually-hidden" id="live" role="status" aria-live="polite"></p>
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
@@ -86,6 +119,7 @@
           <div class="card-labels"></div>
           <div class="card-foot">
             <span class="card-project"><span class="project-dot" aria-hidden="true"></span><span class="project-name"></span></span>
+            <span class="card-branch" hidden></span>
             <span class="card-priority"></span>
             <span class="card-owner" hidden><span class="owner-avatar" aria-hidden="true"></span><span class="owner-name"></span></span>
           </div>
@@ -93,56 +127,114 @@
       </article>
     </template>
 
-    <p class="visually-hidden" id="reorder-hint">Alt со стрелками перемещает карточку. Вверх и вниз — внутри колонки, влево и вправо — между колонками.</p>
+    <p class="visually-hidden" id="reorder-hint" data-i18n="reorder.hint">Alt со стрелками перемещает карточку. Вверх и вниз — внутри колонки, влево и вправо — между колонками.</p>
 
     <dialog class="compose" id="compose-dialog" closedby="any" aria-labelledby="compose-title">
       <form id="compose-form" method="dialog">
         <header class="dialog-head">
           <div>
-            <span class="eyebrow">Новая задача</span>
-            <h2 id="compose-title">Что нужно сделать</h2>
+            <span class="eyebrow" data-i18n="compose.eyebrow">Новая задача</span>
+            <h2 id="compose-title" data-i18n="compose.title">Что нужно сделать</h2>
           </div>
-          <button class="icon-button" type="button" data-close aria-label="Закрыть">
+          <button class="icon-button" type="button" data-close data-i18n-aria-label="compose.close" aria-label="Закрыть">
             <svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 5.5 9 9M14.5 5.5l-9 9"></path></svg>
           </button>
         </header>
 
         <label class="field">
-          <span>Заголовок</span>
-          <input name="title" required autofocus autocomplete="off" placeholder="Коротко и по делу">
+          <span data-i18n="compose.field.title">Заголовок</span>
+          <input
+            name="title"
+            required
+            autofocus
+            autocomplete="off"
+            placeholder="Коротко и по делу"
+            data-i18n-placeholder="compose.titlePlaceholder"
+          >
         </label>
 
         <div class="field-row">
           <label class="field">
-            <span>Проект</span>
-            <input name="project" list="projects" value="Inbox" autocomplete="off">
-            <datalist id="projects"></datalist>
+            <span data-i18n="compose.field.project">Проект</span>
+            <select name="project" id="compose-project"></select>
           </label>
           <label class="field field-narrow">
-            <span>Приоритет</span>
+            <span data-i18n="compose.field.priority">Приоритет</span>
             <select name="priority">
-              <option value="0">p0 — срочно</option>
-              <option value="1">p1 — высокий</option>
-              <option value="2" selected>p2 — обычный</option>
-              <option value="3">p3 — потом</option>
+              <option value="0" data-i18n="priority.option.p0">p0 — критический</option>
+              <option value="1" data-i18n="priority.option.p1">p1 — высокий</option>
+              <option value="2" selected data-i18n="priority.option.p2">p2 — обычный</option>
+              <option value="3" data-i18n="priority.option.p3">p3 — низкий</option>
+              <option value="4" data-i18n="priority.option.p4">p4 — когда-нибудь</option>
             </select>
           </label>
         </div>
 
-        <label class="field">
-          <span>Описание <em>необязательно</em></span>
-          <textarea name="body" rows="4" placeholder="Контекст, ссылки, критерии готовности"></textarea>
+        <label class="field" id="new-project-field" hidden>
+          <span data-i18n="compose.newProjectLabel">Название проекта</span>
+          <input
+            name="newProject"
+            id="compose-new-project"
+            autocomplete="off"
+            placeholder="Название проекта"
+            data-i18n-placeholder="compose.newProjectPlaceholder"
+            hidden
+          >
         </label>
 
         <label class="field">
-          <span>Метки <em>через запятую</em></span>
-          <input name="labels" autocomplete="off" placeholder="ui, срочно">
+          <span data-i18n="compose.field.branch">Ветка</span>
+          <select name="branch" id="compose-branch"></select>
         </label>
+
+        <label class="field" id="new-branch-field" hidden>
+          <span data-i18n="compose.newBranchLabel">Другая ветка</span>
+          <input
+            name="newBranch"
+            id="compose-new-branch"
+            autocomplete="off"
+            placeholder="feat/название"
+            data-i18n-placeholder="compose.newBranchPlaceholder"
+            hidden
+          >
+        </label>
+
+        <label class="field">
+          <span>
+            <span data-i18n="compose.field.body">Описание</span>
+            <em data-i18n="compose.optional">необязательно</em>
+          </span>
+          <textarea
+            name="body"
+            rows="4"
+            placeholder="Контекст, ссылки, критерии готовности"
+            data-i18n-placeholder="compose.bodyPlaceholder"
+          ></textarea>
+        </label>
+
+        <div class="field" role="group" aria-labelledby="labels-heading">
+          <span id="labels-heading" data-i18n="compose.field.labels">Метки</span>
+          <div class="label-picker" id="label-picker"></div>
+          <div class="label-create">
+            <input
+              id="label-name"
+              autocomplete="off"
+              maxlength="32"
+              placeholder="Новая метка"
+              data-i18n-placeholder="compose.labelPlaceholder"
+            >
+            <button class="button button-soft" id="label-add" type="button">
+              <span data-i18n="compose.addLabel">Создать</span>
+            </button>
+          </div>
+        </div>
 
         <footer class="dialog-foot">
-          <button class="button button-ghost" type="button" data-close>Отмена</button>
+          <button class="button button-ghost" type="button" data-close>
+            <span data-i18n="compose.cancel">Отмена</span>
+          </button>
           <button class="button button-primary" type="submit" value="create">
-            <span>Создать</span>
+            <span data-i18n="compose.submit">Создать</span>
             <span class="button-icon" aria-hidden="true">
               <svg class="icon" viewBox="0 0 20 20"><path d="M4 10h11M11 6l4 4-4 4"></path></svg>
             </span>
@@ -158,7 +250,7 @@
             <span class="drawer-id" id="drawer-id">—</span>
             <span class="drawer-project" id="drawer-project">—</span>
           </div>
-          <button class="icon-button" type="button" data-close aria-label="Закрыть">
+          <button class="icon-button" type="button" data-close data-i18n-aria-label="drawer.close" aria-label="Закрыть">
             <svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 5.5 9 9M14.5 5.5l-9 9"></path></svg>
           </button>
         </header>
@@ -171,29 +263,35 @@
           <dl class="meta-grid" id="drawer-meta"></dl>
 
           <section class="drawer-section" id="drawer-threads-section" hidden>
-            <h3>Переговоры</h3>
+            <h3 data-i18n="drawer.threads">Переговоры</h3>
             <div class="threads" id="drawer-threads"></div>
           </section>
 
           <section class="drawer-section">
-            <h3>Комментарии <span class="section-count" id="comment-count">0</span></h3>
+            <h3><span data-i18n="drawer.comments">Комментарии</span> <span class="section-count" id="comment-count">0</span></h3>
             <div class="comments" id="drawer-comments"></div>
             <form class="comment-form" id="comment-form">
               <label class="field">
-                <span class="visually-hidden">Комментарий</span>
-                <textarea name="body" rows="3" required placeholder="Состояние, решение, следующий шаг"></textarea>
+                <span class="visually-hidden" data-i18n="drawer.comments">Комментарии</span>
+                <textarea
+                  name="body"
+                  rows="3"
+                  required
+                  placeholder="Состояние, решение, следующий шаг"
+                  data-i18n-placeholder="drawer.commentPlaceholder"
+                ></textarea>
               </label>
               <div class="comment-actions">
                 <label class="field field-inline">
-                  <span>Тип</span>
+                  <span data-i18n="drawer.kind">Тип</span>
                   <select name="kind">
-                    <option value="note">Заметка</option>
-                    <option value="handoff">Передача</option>
-                    <option value="decision">Решение</option>
+                    <option value="note" data-i18n="drawer.kind.note">Заметка</option>
+                    <option value="handoff" data-i18n="drawer.kind.handoff">Передача</option>
+                    <option value="decision" data-i18n="drawer.kind.decision">Решение</option>
                   </select>
                 </label>
                 <button class="button button-soft" type="submit">
-                  <span>Добавить</span>
+                  <span data-i18n="drawer.addComment">Добавить</span>
                 </button>
               </div>
             </form>
@@ -202,11 +300,11 @@
 
         <footer class="drawer-foot">
           <label class="field field-inline">
-            <span>Статус</span>
+            <span data-i18n="drawer.status">Статус</span>
             <select id="drawer-status"></select>
           </label>
           <button class="button button-primary" id="drawer-done" type="button">
-            <span>Готово</span>
+            <span data-i18n="drawer.done">Готово</span>
             <span class="button-icon" aria-hidden="true">
               <svg class="icon" viewBox="0 0 20 20"><path d="m5 10.5 3.2 3.2L15 6.8"></path></svg>
             </span>

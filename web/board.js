@@ -1,17 +1,23 @@
-const STATUSES = [
-  { id: 'backlog', label: 'Бэклог' },
-  { id: 'todo', label: 'К работе' },
-  { id: 'in_progress', label: 'В работе' },
-  { id: 'review', label: 'Ревью' },
-  { id: 'done', label: 'Готово' },
-]
+import {
+  applyStaticTranslations,
+  currentLocale,
+  hasKey,
+  initI18n,
+  localeTag,
+  t,
+  useLanguage,
+} from './i18n.js'
 
-const CANCELED = { id: 'canceled', label: 'Отменено' }
+const STATUS_IDS = ['backlog', 'todo', 'in_progress', 'review', 'done']
+const CANCELED = 'canceled'
+const PRIORITY_MAX = 4
 
-const STATE_LABELS = Object.fromEntries([...STATUSES, CANCELED].map((s) => [s.id, s.label]))
+const statusLabel = (id) => t(`status.${id}`)
+const priorityTitle = (priority) => t(`priority.title.p${priority}`)
 
 const board = document.querySelector('#board')
 const filters = document.querySelector('#filters')
+const projectsSection = document.querySelector('#projects-section')
 const emptyBoard = document.querySelector('#empty-board')
 const search = document.querySelector('#search')
 const versionEl = document.querySelector('#version')
@@ -21,7 +27,16 @@ const live = document.querySelector('#live')
 const toastEl = document.querySelector('#toast')
 const composeDialog = document.querySelector('#compose-dialog')
 const composeForm = document.querySelector('#compose-form')
-const projectsList = document.querySelector('#projects')
+const composeProject = document.querySelector('#compose-project')
+const composeBranch = document.querySelector('#compose-branch')
+const composeNewProject = document.querySelector('#compose-new-project')
+const composeNewBranch = document.querySelector('#compose-new-branch')
+const newProjectField = document.querySelector('#new-project-field')
+const newBranchField = document.querySelector('#new-branch-field')
+const labelPicker = document.querySelector('#label-picker')
+const labelName = document.querySelector('#label-name')
+const labelAdd = document.querySelector('#label-add')
+const languageSelect = document.querySelector('#language')
 const taskDialog = document.querySelector('#task-dialog')
 const drawerStatus = document.querySelector('#drawer-status')
 const drawerDone = document.querySelector('#drawer-done')
@@ -33,6 +48,8 @@ const state = {
   tasks: [],
   threads: [],
   sessions: [],
+  labels: [],
+  projects: [],
   revision: 0,
   version: '',
   query: '',
@@ -40,6 +57,9 @@ const state = {
 }
 
 const columns = new Map()
+const composeLabels = new Set()
+const collator = () => new Intl.Collator(localeTag(), { sensitivity: 'base' })
+
 let currentTaskId = null
 let drag = null
 let lastMutation = 0
@@ -72,6 +92,12 @@ const el = (tag, className, text) => {
   return node
 }
 
+const option = (value, label) => {
+  const node = el('option', null, label)
+  node.value = value
+  return node
+}
+
 const hueOf = (value) => {
   let hash = 0
   for (const char of String(value ?? '')) hash = (hash * 31 + char.codePointAt(0)) % 360
@@ -80,7 +106,14 @@ const hueOf = (value) => {
 
 const shortSession = (id) => `@${String(id ?? '').slice(-6)}`
 
-const labelOfStatus = (id) => STATE_LABELS[id] ?? id
+const labelColor = (name) =>
+  state.labels.find((label) => label.name === name)?.color ?? `hsl(${hueOf(name)} 70% 65%)`
+
+const errorText = (error) => {
+  const code = error?.code ?? error?.message ?? 'unknown'
+  const key = `error.${code}`
+  return hasKey(key) ? t(key) : t('error.unknown', { code })
+}
 
 const announce = (text) => {
   live.textContent = ''
@@ -99,32 +132,32 @@ const showToast = (text, { error = false } = {}) => {
   }, 4200)
 }
 
-const setConnection = (live) => {
-  connectionEl.classList.toggle('is-live', live)
-  connectionEl.classList.toggle('is-down', !live)
-  connectionText.textContent = live ? 'на связи' : 'переподключение'
+const setConnection = (isLive) => {
+  connectionEl.classList.toggle('is-live', isLive)
+  connectionEl.classList.toggle('is-down', !isLive)
+  connectionText.textContent = t(isLive ? 'connection.live' : 'connection.down')
 }
 
 const leaseLabel = (iso) => {
   const left = new Date(iso).getTime() - Date.now()
-  if (left <= 0) return 'аренда истекла'
+  if (left <= 0) return t('lease.expired')
   const minutes = Math.ceil(left / 60_000)
-  if (minutes < 60) return `осталось ${minutes}м`
+  if (minutes < 60) return t('lease.minutes', { minutes })
   const hours = Math.floor(minutes / 60)
-  return `осталось ${hours}ч ${minutes % 60}м`
+  return t('lease.hours', { hours, minutes: minutes % 60 })
 }
 
 const agoLabel = (iso) => {
   const diff = Date.now() - new Date(iso).getTime()
   if (Number.isNaN(diff)) return '—'
-  if (diff < 60_000) return 'только что'
-  if (diff < 3_600_000) return `${Math.round(diff / 60_000)}м назад`
-  if (diff < 86_400_000) return `${Math.round(diff / 3_600_000)}ч назад`
-  return new Intl.DateTimeFormat('ru', { day: 'numeric', month: 'short' }).format(new Date(iso))
+  if (diff < 60_000) return t('time.now')
+  if (diff < 3_600_000) return t('time.minutesAgo', { minutes: Math.round(diff / 60_000) })
+  if (diff < 86_400_000) return t('time.hoursAgo', { hours: Math.round(diff / 3_600_000) })
+  return new Intl.DateTimeFormat(localeTag(), { day: 'numeric', month: 'short' }).format(new Date(iso))
 }
 
 const dateLabel = (iso) =>
-  new Intl.DateTimeFormat('ru', {
+  new Intl.DateTimeFormat(localeTag(), {
     day: 'numeric',
     month: 'short',
     hour: '2-digit',
@@ -143,37 +176,49 @@ async function loadBoard() {
     state.tasks = data.tasks
     state.threads = data.threads
     state.sessions = data.sessions
+    state.labels = data.labels ?? []
     state.revision = Math.max(state.revision, data.revision)
     state.version = data.version
     setConnection(true)
     render()
-  } catch (error) {
+    if (composeDialog.open) renderLabelPicker()
+  } catch {
     if (Date.now() - lastErrorAt > 5000) {
       lastErrorAt = Date.now()
-      showToast('Доска недоступна. Проверьте, что сервер запущен.', { error: true })
+      showToast(t('toast.boardDown'), { error: true })
     }
     setConnection(false)
   }
 }
 
+async function loadProjects() {
+  try {
+    const data = await api('/api/projects')
+    state.projects = data.projects ?? []
+  } catch {
+    // Список репозиториев не критичен: проект можно ввести вручную.
+  }
+}
+
 function render() {
-  versionEl.textContent = state.version ? `v${state.version}` : '—'
-  document.title = state.tasks.length ? `Kanso — ${state.tasks.length} задач` : 'Kanso — доска'
+  versionEl.textContent = state.version ? t('brand.version', { version: state.version }) : '—'
+  document.title = state.tasks.length
+    ? t('app.titleCount', { count: state.tasks.length })
+    : t('app.title')
   if (search.value !== state.query) search.value = state.query
 
   const empty = state.tasks.length === 0
   emptyBoard.hidden = !empty
   board.hidden = empty
-  filters.hidden = empty
+  projectsSection.hidden = empty
 
   renderFilters()
-  renderProjectList()
   if (!empty) renderColumns()
 }
 
 function renderFilters() {
   const projects = [...new Set(state.tasks.map((task) => task.project))].sort((a, b) =>
-    a.localeCompare(b, 'ru'),
+    collator().compare(a, b),
   )
   const counts = new Map()
   for (const task of state.tasks) counts.set(task.project, (counts.get(task.project) ?? 0) + 1)
@@ -187,8 +232,10 @@ function renderFilters() {
     : null
 
   const fragment = document.createDocumentFragment()
-  fragment.append(createChip('all', 'Все', state.tasks.length))
-  for (const project of projects) fragment.append(createChip(project, project, counts.get(project)))
+  fragment.append(createChip('all', t('sidebar.all'), state.tasks.length))
+  for (const project of projects) {
+    fragment.append(createChip(project, project, counts.get(project)))
+  }
   filters.replaceChildren(fragment)
 
   if (focused) {
@@ -209,17 +256,6 @@ function createChip(value, label, count) {
   return chip
 }
 
-function renderProjectList() {
-  const projects = [...new Set(state.tasks.map((task) => task.project))].sort((a, b) =>
-    a.localeCompare(b, 'ru'),
-  )
-  if (!projects.includes('Inbox') && !state.tasks.length) projects.push('Inbox')
-  const signature = projects.join('|')
-  if (projectsList.dataset.signature === signature) return
-  projectsList.dataset.signature = signature
-  projectsList.replaceChildren(...projects.map((project) => el('option', null, project)))
-}
-
 function visibleTask(task) {
   if (state.project !== 'all' && task.project !== state.project) return false
   if (!state.query) return true
@@ -228,21 +264,27 @@ function visibleTask(task) {
     task.id.toLowerCase().includes(needle) ||
     task.title.toLowerCase().includes(needle) ||
     task.project.toLowerCase().includes(needle) ||
+    (task.branch ?? '').toLowerCase().includes(needle) ||
     task.labels.some((label) => label.toLowerCase().includes(needle))
   )
 }
 
 function renderColumns() {
-  const grouped = new Map(STATUSES.map((status) => [status.id, []]))
-  grouped.set(CANCELED.id, [])
+  const grouped = new Map(STATUS_IDS.map((id) => [id, []]))
+  grouped.set(CANCELED, [])
   for (const task of state.tasks) {
     if (!visibleTask(task)) continue
     if (!grouped.has(task.status)) grouped.set(task.status, [])
     grouped.get(task.status).push(task)
   }
 
-  const defs = STATUSES.slice()
-  if (grouped.get(CANCELED.id).length) defs.push(CANCELED)
+  const defs = STATUS_IDS.map((id) => ({ id, label: statusLabel(id) }))
+  if (grouped.get(CANCELED).length) defs.push({ id: CANCELED, label: statusLabel(CANCELED) })
+
+  // Карточки ищем по всей доске: при переносе они переезжают в другую колонку,
+  // а не пересоздаются. Иначе теряется фокус и рвётся view-transition.
+  const existing = new Map()
+  for (const node of board.querySelectorAll('.card')) existing.set(node.dataset.id, node)
 
   for (const def of defs) {
     let column = columns.get(def.id)
@@ -253,8 +295,10 @@ function renderColumns() {
     }
     const count = grouped.get(def.id)?.length ?? 0
     column.querySelector('.column-count').textContent = String(count)
-    reconcile(column.querySelector('.column-list'), grouped.get(def.id) ?? [])
+    reconcile(column.querySelector('.column-list'), grouped.get(def.id) ?? [], existing)
   }
+
+  for (const card of existing.values()) card.remove()
 
   for (const [id, column] of columns) {
     if (!defs.some((def) => def.id === id)) {
@@ -263,11 +307,10 @@ function renderColumns() {
     }
   }
 
-  const boardOrder = [...board.children]
   const desired = defs.map((def) => columns.get(def.id))
-  for (const column of desired) board.append(column)
-  for (const column of boardOrder) {
-    if (!desired.includes(column)) column.remove()
+  const current = [...board.children]
+  if (current.length !== desired.length || current.some((node, index) => node !== desired[index])) {
+    for (const column of desired) board.append(column)
   }
 }
 
@@ -277,12 +320,11 @@ function createColumn(def) {
 
   const head = el('header', 'column-head')
   head.append(el('span', 'column-dot'))
-  const title = el('h2', 'column-title', def.label)
-  head.append(title, el('span', 'column-count', '0'))
+  head.append(el('h2', 'column-title', def.label), el('span', 'column-count', '0'))
 
   const add = el('button', 'column-add')
   add.type = 'button'
-  add.setAttribute('aria-label', `Добавить задачу в «${def.label}»`)
+  add.setAttribute('aria-label', t('column.add', { status: def.label }))
   add.innerHTML =
     '<svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11"></path></svg>'
   add.addEventListener('click', () => openCompose(def.id))
@@ -296,11 +338,8 @@ function createColumn(def) {
   return column
 }
 
-function reconcile(list, tasks) {
+function reconcile(list, tasks, existing) {
   for (const empty of list.querySelectorAll('.column-empty')) empty.remove()
-
-  const existing = new Map()
-  for (const node of list.querySelectorAll(':scope > .card')) existing.set(node.dataset.id, node)
 
   tasks.forEach((task, index) => {
     let card = existing.get(task.id)
@@ -314,26 +353,30 @@ function reconcile(list, tasks) {
     if (reference !== card) moveNode(list, card, reference)
   })
 
-  for (const card of existing.values()) card.remove()
-
   if (!tasks.length) {
-    const empty = el('div', 'column-empty', state.query ? 'Ничего не найдено' : 'Перетащите задачу сюда')
+    const empty = el(
+      'div',
+      'column-empty',
+      t(state.query ? 'board.nothingFound' : 'board.drop'),
+    )
     list.append(empty)
   }
 }
 
 function moveNode(parent, node, reference) {
-  if (reference && reference.parentElement === parent) {
-    if (node.parentElement === parent && parent.moveBefore) parent.moveBefore(node, reference)
-    else parent.insertBefore(node, reference)
+  // moveBefore сохраняет фокус и состояние при переезде между колонками,
+  // но работает только с уже подключёнными узлами.
+  if (node.isConnected && parent.isConnected && parent.moveBefore) {
+    parent.moveBefore(node, reference)
     return
   }
-  if (node.parentElement === parent && parent.moveBefore) parent.moveBefore(node, null)
+  if (reference && reference.parentElement === parent) parent.insertBefore(node, reference)
   else parent.append(node)
 }
 
 function createCard(task) {
-  const card = cardTemplate.content.firstElementChild.cloneNode(true)
+  // importNode переводит узел в текущий документ: moveBefore не умеет adopt из template.
+  const card = document.importNode(cardTemplate.content.firstElementChild, true)
   card.dataset.id = task.id
   card.setAttribute('role', 'listitem')
   card.addEventListener('click', (event) => {
@@ -345,6 +388,12 @@ function createCard(task) {
   return card
 }
 
+function labelChip(name, className = 'label') {
+  const chip = el('span', className, name)
+  chip.style.setProperty('--label-color', labelColor(name))
+  return chip
+}
+
 function updateCard(card, task) {
   card.dataset.updated = task.updated_at
   card.style.setProperty('--hue', hueOf(task.project))
@@ -352,31 +401,38 @@ function updateCard(card, task) {
   card.querySelector('.card-id').textContent = task.id
   const title = card.querySelector('.card-title')
   title.textContent = task.title
-  title.setAttribute('aria-label', `Открыть ${task.id}: ${task.title}`)
+  title.setAttribute('aria-label', t('card.open', { id: task.id, title: task.title }))
 
   const handle = card.querySelector('.card-handle')
-  handle.setAttribute('aria-label', `Переместить ${task.id}`)
+  handle.setAttribute('aria-label', t('card.move', { id: task.id }))
 
   const labels = card.querySelector('.card-labels')
   labels.replaceChildren(
-    ...task.labels.slice(0, 3).map((label) => el('span', 'label', label)),
-    ...(task.labels.length > 3 ? [el('span', 'label', `+${task.labels.length - 3}`)] : []),
+    ...task.labels.slice(0, 3).map((label) => labelChip(label)),
+    ...(task.labels.length > 3
+      ? [el('span', 'label', `+${task.labels.length - 3}`)]
+      : []),
   )
 
   const projectName = card.querySelector('.project-name')
   projectName.textContent = task.project
   card.querySelector('.project-dot').style.setProperty('--hue', hueOf(task.project))
 
+  const branch = card.querySelector('.card-branch')
+  branch.hidden = !task.branch
+  branch.textContent = task.branch ?? ''
+  if (task.branch) branch.title = t('card.branch', { branch: task.branch })
+
   const priority = card.querySelector('.card-priority')
   priority.textContent = `p${task.priority}`
   priority.dataset.priority = String(task.priority)
-  priority.title = ['Критический', 'Высокий', 'Обычный', 'Низкий'][task.priority] ?? 'Приоритет'
+  priority.title = priorityTitle(task.priority) ?? t('priority.unknown')
 
   const owner = card.querySelector('.card-owner')
   const lease = card.querySelector('.card-lease')
   if (task.claim) {
     owner.hidden = false
-    owner.title = `Сессия ${task.claim.session}`
+    owner.title = t('card.owner', { session: task.claim.session })
     owner.querySelector('.owner-avatar').style.setProperty('--owner-hue', hueOf(task.claim.session))
     owner.querySelector('.owner-name').textContent = shortSession(task.claim.session)
     lease.hidden = false
@@ -398,9 +454,24 @@ function onPointerDown(event) {
   if (!card) return
 
   event.preventDefault()
+  const rect = card.getBoundingClientRect()
+  const ghost = card.cloneNode(true)
+  ghost.classList.add('card-ghost')
+  ghost.classList.remove('is-drag-origin')
+  ghost.removeAttribute('role')
+  ghost.setAttribute('aria-hidden', 'true')
+  ghost.style.left = `${rect.left}px`
+  ghost.style.top = `${rect.top}px`
+  ghost.style.width = `${rect.width}px`
+  ghost.style.height = `${rect.height}px`
+  ghost.style.viewTransitionName = 'none'
+  for (const node of ghost.querySelectorAll('[id]')) node.removeAttribute('id')
+  document.body.append(ghost)
+
   drag = {
     card,
     handle,
+    ghost,
     pointerId: event.pointerId,
     startX: event.clientX,
     startY: event.clientY,
@@ -411,8 +482,7 @@ function onPointerDown(event) {
   }
 
   handle.setPointerCapture(event.pointerId)
-  card.classList.add('is-dragging')
-  card.style.transform = 'translate3d(0, 0, 0) scale(1.015)'
+  card.classList.add('is-drag-origin')
   document.body.classList.add('is-reordering')
   drag.raf = requestAnimationFrame(autoScroll)
 }
@@ -423,13 +493,14 @@ function onPointerMove(event) {
   drag.lastY = event.clientY
   const dx = event.clientX - drag.startX
   const dy = event.clientY - drag.startY
-  drag.card.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(1.015)`
+  drag.ghost.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(1.015)`
   updateDrop()
 }
 
 function onPointerUp(event) {
   if (!drag || event.pointerId !== drag.pointerId) return
   const { card, drop } = drag
+  const taskTitle = card.querySelector('.card-title').textContent
   endDrag()
 
   if (!drop) return
@@ -442,23 +513,21 @@ function onPointerUp(event) {
   if (sameSlot) return
 
   applyMove(card, drop.status, drop.beforeId)
-  announce(`${card.querySelector('.card-title').textContent} → ${labelOfStatus(drop.status)}`)
+  announce(t('announce.moved', { title: taskTitle, status: statusLabel(drop.status) }))
 }
 
 function onPointerCancel(event) {
   if (!drag || event.pointerId !== drag.pointerId) return
   endDrag()
-  announce('Перемещение отменено')
+  announce(t('announce.cancelled'))
 }
 
 function endDrag() {
   if (!drag) return
-  const { card, raf } = drag
+  const { card, ghost, raf } = drag
   cancelAnimationFrame(raf)
-  if (card) {
-    card.classList.remove('is-dragging')
-    card.style.removeProperty('transform')
-  }
+  ghost?.remove()
+  card?.classList.remove('is-drag-origin')
   document.body.classList.remove('is-reordering')
   clearDropMarker()
   drag = null
@@ -487,7 +556,7 @@ function updateDrop() {
   clearDropMarker()
   drag.drop = null
 
-  if (!column || column.dataset.status === CANCELED.id) return
+  if (!column || column.dataset.status === CANCELED) return
 
   const list = column.querySelector('.column-list')
   const cards = [...list.querySelectorAll(':scope > .card')].filter((node) => node !== drag.card)
@@ -576,27 +645,33 @@ function onHandleKeyDown(event) {
     const index = cards.indexOf(card)
     const swap = key === 'ArrowUp' ? cards[index - 1] : cards[index + 1]
     if (!swap) {
-      announce('Дальше некуда')
+      announce(t('announce.noFurther'))
       return
     }
     const beforeId =
       key === 'ArrowUp' ? swap.dataset.id : swap.nextElementSibling?.dataset.id ?? null
     applyMove(card, list.dataset.status, beforeId, { animate: false })
-    announce(`${title} → ${labelOfStatus(list.dataset.status)}, позиция ${key === 'ArrowUp' ? index : index + 2}`)
+    announce(
+      t('announce.position', {
+        title,
+        status: statusLabel(list.dataset.status),
+        position: key === 'ArrowUp' ? index : index + 2,
+      }),
+    )
   } else {
     const order = [...board.querySelectorAll('.column')].filter(
-      (column) => column.dataset.status !== CANCELED.id,
+      (column) => column.dataset.status !== CANCELED,
     )
     const current = list.closest('.column')
     const next = order[order.indexOf(current) + (key === 'ArrowRight' ? 1 : -1)]
     if (!next) {
-      announce('Дальше некуда')
+      announce(t('announce.noFurther'))
       return
     }
     const targetList = next.querySelector('.column-list')
     const first = targetList.querySelector(':scope > .card')
     applyMove(card, next.dataset.status, first?.dataset.id ?? null, { animate: false })
-    announce(`${title} → ${labelOfStatus(next.dataset.status)}`)
+    announce(t('announce.moved', { title, status: statusLabel(next.dataset.status) }))
   }
 
   requestAnimationFrame(() => handle.focus({ preventScroll: true }))
@@ -608,15 +683,23 @@ function applyMove(card, status, beforeId, { animate = true } = {}) {
   const targetList = board.querySelector(`.column-list[data-status="${status}"]`)
   if (!targetList) return
 
-  const before =
-    beforeId ? targetList.querySelector(`.card[data-id="${beforeId}"]`) : null
   const sourceList = card.parentElement
   const sameColumn = sourceList === targetList
+  const task = state.tasks.find((item) => item.id === card.dataset.id)
 
-  const update = () => {
-    for (const empty of targetList.querySelectorAll('.column-empty')) empty.remove()
-    moveNode(targetList, card, before)
+  if (task) {
+    task.status = status
+    const index = state.tasks.indexOf(task)
+    state.tasks.splice(index, 1)
+    if (beforeId) {
+      const at = state.tasks.findIndex((item) => item.id === beforeId)
+      state.tasks.splice(at === -1 ? state.tasks.length : at, 0, task)
+    } else {
+      state.tasks.push(task)
+    }
   }
+
+  const update = () => renderColumns()
 
   if (animate && !reduceMotion.matches) {
     try {
@@ -634,19 +717,6 @@ function applyMove(card, status, beforeId, { animate = true } = {}) {
     update()
   }
 
-  const task = state.tasks.find((item) => item.id === card.dataset.id)
-  if (task) {
-    task.status = status
-    const index = state.tasks.indexOf(task)
-    state.tasks.splice(index, 1)
-    if (beforeId) {
-      const at = state.tasks.findIndex((item) => item.id === beforeId)
-      state.tasks.splice(at === -1 ? state.tasks.length : at, 0, task)
-    } else {
-      state.tasks.push(task)
-    }
-  }
-
   markLocal()
   api(`/api/tasks/${encodeURIComponent(card.dataset.id)}/move`, {
     method: 'POST',
@@ -655,28 +725,11 @@ function applyMove(card, status, beforeId, { animate = true } = {}) {
     .then(({ task: updated }) => {
       if (!task || !updated) return
       Object.assign(task, updated)
-      const node = board.querySelector(`.card[data-id="${updated.id}"]`)
-      if (node) updateCard(node, task)
     })
     .catch((error) => {
-      showToast(`Не удалось переместить: ${error.message}`, { error: true })
+      showToast(t('toast.moveFailed', { error: errorText(error) }), { error: true })
       loadBoard()
     })
-
-  updateColumnCounts()
-}
-
-function updateColumnCounts() {
-  for (const column of board.querySelectorAll('.column')) {
-    const list = column.querySelector('.column-list')
-    const count = list.querySelectorAll(':scope > .card').length
-    column.querySelector('.column-count').textContent = String(count)
-    const empty = list.querySelector('.column-empty')
-    if (count && empty) empty.remove()
-    if (!count && !empty) {
-      list.append(el('div', 'column-empty', state.query ? 'Ничего не найдено' : 'Перетащите задачу сюда'))
-    }
-  }
 }
 
 /* ---------- Карточка задачи ---------- */
@@ -688,7 +741,7 @@ async function openTask(id) {
     renderDrawer(data)
     if (!taskDialog.open) taskDialog.showModal()
   } catch (error) {
-    showToast(`Не удалось открыть задачу: ${error.message}`, { error: true })
+    showToast(t('toast.openFailed', { error: errorText(error) }), { error: true })
   }
 }
 
@@ -699,50 +752,57 @@ function renderDrawer({ task, comments, threads }) {
 
   const badges = document.querySelector('#drawer-badges')
   const badgeItems = [
-    el('span', 'badge', labelOfStatus(task.status)),
+    el('span', 'badge', statusLabel(task.status)),
     el('span', 'badge', `p${task.priority}`),
     el('span', 'badge', task.project),
   ]
   badgeItems[1].dataset.kind = `priority-${task.priority}`
-  if (task.claim) badgeItems.push(el('span', 'badge', task.stale ? 'аренда истекла' : 'в аренде'))
+  if (task.branch) badgeItems.push(el('span', 'badge badge-branch', task.branch))
+  if (task.claim) {
+    badgeItems.push(el('span', 'badge', t(task.stale ? 'drawer.badge.stale' : 'drawer.badge.claimed')))
+  }
+  for (const label of task.labels) {
+    const chip = labelChip(label, 'badge badge-label')
+    badgeItems.push(chip)
+  }
   badges.replaceChildren(...badgeItems)
 
   document.querySelector('#drawer-body').textContent = task.body ?? ''
 
   const meta = document.querySelector('#drawer-meta')
   const entries = [
-    ['Создана', dateLabel(task.created_at), false],
-    ['Обновлена', agoLabel(task.updated_at), false],
+    [t('drawer.meta.created'), dateLabel(task.created_at), false],
+    [t('drawer.meta.updated'), agoLabel(task.updated_at), false],
   ]
+  if (task.branch) entries.push([t('drawer.meta.branch'), task.branch, true])
   if (task.claim) {
-    entries.push(['Владелец', task.claim.session, true])
-    entries.push(['Аренда', leaseLabel(task.claim.lease_until), true])
+    entries.push([t('drawer.meta.owner'), task.claim.session, true])
+    entries.push([t('drawer.meta.lease'), leaseLabel(task.claim.lease_until), true])
   }
   if (task.claim?.touched_paths?.length) {
-    entries.push(['Файлы', task.claim.touched_paths.join(', '), true])
+    entries.push([t('drawer.meta.files'), task.claim.touched_paths.join(', '), true])
   }
-  if (task.blocked_by.length) entries.push(['Блокеры', task.blocked_by.join(', '), true])
-  if (task.labels.length) entries.push(['Метки', task.labels.join(', '), false])
+  if (task.blocked_by.length) {
+    entries.push([t('drawer.meta.blockers'), task.blocked_by.join(', '), true])
+  }
 
   meta.replaceChildren(
     ...entries.map(([term, value, mono]) => {
       const block = el('div')
       block.append(el('dt', null, term))
-      const dd = el('dd', mono ? 'mono' : null, value)
-      block.append(dd)
+      block.append(el('dd', mono ? 'mono' : null, value))
       return block
     }),
   )
 
   drawerStatus.replaceChildren(
-    ...[...STATUSES, CANCELED].map((status) => {
-      const option = el('option', null, status.label)
-      option.value = status.id
-      option.selected = status.id === task.status
-      return option
+    ...[...STATUS_IDS, CANCELED].map((id) => {
+      const node = option(id, statusLabel(id))
+      node.selected = id === task.status
+      return node
     }),
   )
-  drawerDone.disabled = task.status === 'done' || task.status === 'canceled'
+  drawerDone.disabled = task.status === 'done' || task.status === CANCELED
 
   const threadSection = document.querySelector('#drawer-threads-section')
   const threadList = document.querySelector('#drawer-threads')
@@ -752,7 +812,7 @@ function renderDrawer({ task, comments, threads }) {
   document.querySelector('#comment-count').textContent = String(comments.length)
   const commentList = document.querySelector('#drawer-comments')
   if (!comments.length) {
-    commentList.replaceChildren(el('p', 'comment-empty', 'Пока пусто. Запишите состояние или решение.'))
+    commentList.replaceChildren(el('p', 'comment-empty', t('drawer.comment.empty')))
   } else {
     commentList.replaceChildren(...comments.map(renderComment))
   }
@@ -768,7 +828,7 @@ function renderThread(thread) {
   const head = el('div', 'thread-head')
   head.append(
     el('span', null, thread.id),
-    el('span', 'thread-state', thread.state.replace('_', ' ')),
+    el('span', 'thread-state', t(`thread.state.${thread.state}`)),
     el('span', null, `${thread.task_a} × ${thread.task_b}`),
   )
   box.append(head, el('code', 'thread-path', thread.path))
@@ -784,7 +844,7 @@ function renderThread(thread) {
   }
 
   if (thread.state === 'needs_decision') {
-    box.append(el('p', 'comment-empty', 'Нужно решение человека. Запишите его в комментарии к задаче.'))
+    box.append(el('p', 'comment-empty', t('drawer.thread.needsDecision')))
   }
 
   return box
@@ -794,8 +854,8 @@ function renderComment(comment) {
   const box = el('div', 'comment')
   const head = el('div', 'comment-head')
   head.append(
-    el('span', null, comment.session_id ? shortSession(comment.session_id) : 'доска'),
-    el('span', 'comment-kind', comment.kind),
+    el('span', null, comment.session_id ? shortSession(comment.session_id) : t('drawer.comment.board')),
+    el('span', 'comment-kind', t(`drawer.kind.${comment.kind}`)),
     el('span', null, agoLabel(comment.created_at)),
   )
   box.append(head, el('div', 'comment-body', comment.body))
@@ -813,18 +873,126 @@ async function moveFromDrawer(status) {
     await loadBoard()
     await openTask(currentTaskId)
   } catch (error) {
-    showToast(`Не удалось сменить статус: ${error.message}`, { error: true })
+    showToast(t('toast.statusFailed', { error: errorText(error) }), { error: true })
   }
 }
 
 /* ---------- Создание ---------- */
 
+function projectNames() {
+  const names = new Set(['Inbox'])
+  for (const project of state.projects) names.add(project.name)
+  for (const task of state.tasks) names.add(task.project)
+  return [...names].filter(Boolean).sort((a, b) => collator().compare(a, b))
+}
+
+function projectByName(name) {
+  return state.projects.find((project) => project.name === name)
+}
+
+function populateComposeProjects(preferred) {
+  const names = projectNames()
+  const selected =
+    names.includes(preferred) ? preferred : names.includes('Inbox') ? 'Inbox' : names[0]
+
+  composeProject.replaceChildren(
+    ...names.map((name) => option(name, name)),
+    option('__new__', t('compose.newProject')),
+  )
+  composeProject.value = selected
+  syncNewProjectField()
+  populateComposeBranches()
+}
+
+function populateComposeBranches(preferred = '') {
+  const repository = projectByName(composeProject.value)
+  const branches = repository?.branches ?? []
+  composeBranch.replaceChildren(
+    option('', t('compose.noBranch')),
+    ...branches.map((branch) =>
+      option(branch, branch === repository.current_branch ? `${branch} *` : branch),
+    ),
+    option('__new__', t('compose.newBranch')),
+  )
+
+  const value = preferred && (preferred === '__new__' || branches.includes(preferred))
+    ? preferred
+    : ''
+  composeBranch.value = value
+  syncNewBranchField()
+}
+
+function syncNewProjectField(focus = false) {
+  const isNew = composeProject.value === '__new__'
+  newProjectField.hidden = !isNew
+  composeNewProject.hidden = !isNew
+  if (isNew && focus) requestAnimationFrame(() => composeNewProject.focus())
+}
+
+function syncNewBranchField(focus = false) {
+  const isNew = composeBranch.value === '__new__'
+  newBranchField.hidden = !isNew
+  composeNewBranch.hidden = !isNew
+  if (isNew && focus) requestAnimationFrame(() => composeNewBranch.focus())
+}
+
 function openCompose(status = 'backlog') {
   composeTarget = status
   composeForm.reset()
-  composeForm.elements.project.value = state.project === 'all' ? 'Inbox' : state.project
+  composeLabels.clear()
+  const preferred = state.project !== 'all' ? state.project : 'Inbox'
+  populateComposeProjects(preferred)
+  populateComposeBranches()
+  renderLabelPicker()
+  labelName.value = ''
   composeDialog.showModal()
   requestAnimationFrame(() => composeForm.elements.title.focus())
+  void loadProjects().then(() => populateComposeProjects(composeProject.value))
+}
+
+function renderLabelPicker() {
+  if (!state.labels.length) {
+    labelPicker.replaceChildren(el('span', 'label-empty', t('compose.noLabels')))
+    return
+  }
+
+  labelPicker.replaceChildren(
+    ...state.labels.map((label) => {
+      const chip = el('button', 'label-choice', label.name)
+      chip.type = 'button'
+      chip.style.setProperty('--label-color', label.color)
+      chip.setAttribute('aria-pressed', String(composeLabels.has(label.name)))
+      chip.addEventListener('click', () => {
+        if (composeLabels.has(label.name)) composeLabels.delete(label.name)
+        else composeLabels.add(label.name)
+        chip.setAttribute('aria-pressed', String(composeLabels.has(label.name)))
+      })
+      return chip
+    }),
+  )
+}
+
+async function addLabel() {
+  const name = labelName.value.trim()
+  if (!name) {
+    showToast(t('toast.labelRequired'), { error: true })
+    labelName.focus()
+    return
+  }
+
+  try {
+    const { label } = await api('/api/labels', { method: 'POST', body: { name } })
+    if (!state.labels.some((item) => item.name === label.name)) {
+      state.labels.push(label)
+      state.labels.sort((a, b) => collator().compare(a.name, b.name))
+    }
+    composeLabels.add(label.name)
+    labelName.value = ''
+    renderLabelPicker()
+    showToast(t('toast.labelCreated', { name: label.name }))
+  } catch (error) {
+    showToast(t('toast.labelFailed', { error: errorText(error) }), { error: true })
+  }
 }
 
 async function submitCompose(event) {
@@ -836,10 +1004,25 @@ async function submitCompose(event) {
     return
   }
 
-  const labels = String(form.get('labels') ?? '')
-    .split(',')
-    .map((label) => label.trim())
-    .filter(Boolean)
+  const project =
+    composeProject.value === '__new__'
+      ? composeNewProject.value.trim()
+      : composeProject.value
+  if (!project) {
+    showToast(t('error.project_required'), { error: true })
+    composeNewProject.focus()
+    return
+  }
+
+  const branch =
+    composeBranch.value === '__new__'
+      ? composeNewBranch.value.trim()
+      : composeBranch.value
+
+  const priorityValue = Number(form.get('priority') ?? 2)
+  const priority = Number.isInteger(priorityValue)
+    ? Math.min(PRIORITY_MAX, Math.max(0, priorityValue))
+    : 2
 
   try {
     markLocal()
@@ -848,9 +1031,10 @@ async function submitCompose(event) {
       body: {
         title,
         body: String(form.get('body') ?? ''),
-        project: String(form.get('project') ?? 'Inbox').trim() || 'Inbox',
-        priority: Number(form.get('priority') ?? 2),
-        labels,
+        project,
+        branch,
+        priority,
+        labels: [...composeLabels],
       },
     })
     composeDialog.close()
@@ -861,10 +1045,31 @@ async function submitCompose(event) {
       })
     }
     await loadBoard()
-    showToast(`Создана ${created.task.id}`)
-    announce(`Создана задача ${created.task.id}`)
+    void loadProjects()
+    showToast(t('toast.created', { id: created.task.id }))
+    announce(t('announce.created', { id: created.task.id }))
   } catch (error) {
-    showToast(`Не удалось создать: ${error.message}`, { error: true })
+    showToast(t('toast.createFailed', { error: errorText(error) }), { error: true })
+  }
+}
+
+/* ---------- Язык ---------- */
+
+async function changeLanguage(next) {
+  await useLanguage(next)
+  languageSelect.value = currentLocale()
+  applyStaticTranslations()
+
+  columns.clear()
+  board.replaceChildren()
+  filters.dataset.signature = ''
+  render()
+
+  if (taskDialog.open && currentTaskId) {
+    await openTask(currentTaskId)
+  } else if (composeDialog.open) {
+    renderLabelPicker()
+    populateComposeProjects(composeProject.value)
   }
 }
 
@@ -876,14 +1081,38 @@ board.addEventListener('pointercancel', onPointerCancel)
 board.addEventListener('lostpointercapture', (event) => {
   if (drag && event.pointerId === drag.pointerId) {
     endDrag()
-    announce('Перемещение отменено')
+    announce(t('announce.cancelled'))
   }
 })
+
+board.addEventListener(
+  'wheel',
+  (event) => {
+    if (event.ctrlKey) return
+    if (board.scrollWidth <= board.clientWidth + 1) return
+
+    if (event.shiftKey) {
+      board.scrollLeft += event.deltaY
+      event.preventDefault()
+      return
+    }
+
+    const list = event.target.closest('.column-list')
+    const canScrollList = list && list.scrollHeight > list.clientHeight + 1
+    if (canScrollList && Math.abs(event.deltaY) >= Math.abs(event.deltaX)) return
+
+    const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY
+    if (!delta) return
+    board.scrollLeft += delta
+    event.preventDefault()
+  },
+  { passive: false },
+)
 
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && drag) {
     endDrag()
-    announce('Перемещение отменено')
+    announce(t('announce.cancelled'))
   }
 })
 
@@ -895,7 +1124,20 @@ search.addEventListener('input', () => {
 document.querySelector('#new-task').addEventListener('click', () => openCompose())
 document.querySelector('#empty-create').addEventListener('click', () => openCompose())
 
+composeProject.addEventListener('change', () => {
+  syncNewProjectField(true)
+  populateComposeBranches()
+})
+composeBranch.addEventListener('change', () => syncNewBranchField(true))
 composeForm.addEventListener('submit', submitCompose)
+labelAdd.addEventListener('click', addLabel)
+labelName.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault()
+    addLabel()
+  }
+})
+languageSelect.addEventListener('change', () => changeLanguage(languageSelect.value))
 
 for (const button of document.querySelectorAll('[data-close]')) {
   button.addEventListener('click', () => button.closest('dialog')?.close())
@@ -922,7 +1164,7 @@ commentForm.addEventListener('submit', async (event) => {
     await openTask(id)
     loadBoard()
   } catch (error) {
-    showToast(`Не удалось добавить комментарий: ${error.message}`, { error: true })
+    showToast(t('toast.commentFailed', { error: errorText(error) }), { error: true })
   }
 })
 
@@ -1013,7 +1255,19 @@ if (!('closedBy' in HTMLDialogElement.prototype)) {
   }
 }
 
-loadBoard().then(connectEvents)
+/* ---------- Запуск ---------- */
+
+async function boot() {
+  await initI18n()
+  languageSelect.value = currentLocale()
+  applyStaticTranslations()
+  await loadBoard()
+  connectEvents()
+  void loadProjects()
+}
+
+boot()
+
 window.setInterval(() => {
   for (const card of board.querySelectorAll('.card')) {
     const task = state.tasks.find((item) => item.id === card.dataset.id)

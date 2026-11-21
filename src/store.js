@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   title      TEXT NOT NULL,
   body       TEXT NOT NULL DEFAULT '',
   project    TEXT NOT NULL,
+  branch     TEXT NOT NULL DEFAULT '',
   status     TEXT NOT NULL DEFAULT 'backlog',
   priority   INTEGER NOT NULL DEFAULT 2,
   position   REAL NOT NULL DEFAULT 0,
@@ -73,6 +74,12 @@ CREATE TABLE IF NOT EXISTS sessions (
   agent        TEXT NOT NULL DEFAULT '',
   started_at   TEXT NOT NULL,
   last_seen_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS labels (
+  name       TEXT PRIMARY KEY,
+  color      TEXT NOT NULL,
+  created_at TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS tasks_status ON tasks(status, seq);
@@ -135,6 +142,62 @@ export function openStore(path) {
   if (!taskColumns.includes('position')) {
     db.exec('ALTER TABLE tasks ADD COLUMN position REAL NOT NULL DEFAULT 0')
   }
+  if (!taskColumns.includes('branch')) {
+    db.exec("ALTER TABLE tasks ADD COLUMN branch TEXT NOT NULL DEFAULT ''")
+  }
+
+  const badRequest = (code) => Object.assign(new Error(code), { status: 400 })
+
+  const normalizePriority = (value, fallback = 2) => {
+    const priority = value === undefined || value === null || value === '' ? fallback : Number(value)
+    if (!Number.isInteger(priority) || priority < 0 || priority > 4) {
+      throw badRequest('priority_out_of_range')
+    }
+    return priority
+  }
+
+  const normalizeLabels = (labels) => {
+    if (!Array.isArray(labels)) return []
+    return [...new Set(labels.map((label) => String(label).trim()).filter(Boolean))]
+  }
+
+  const LABEL_PALETTE = [
+    '#b3a1ff',
+    '#8ec8ff',
+    '#96e6b3',
+    '#f6c978',
+    '#ff9b9b',
+    '#7ee0d8',
+    '#e0a1ff',
+    '#c6f56d',
+  ]
+
+  const autoLabelColor = (name) => {
+    let hash = 0
+    for (const char of String(name)) hash = (hash * 31 + char.codePointAt(0)) % 360
+    return LABEL_PALETTE[hash % LABEL_PALETTE.length]
+  }
+
+  const listLabels = () =>
+    db.prepare('SELECT name, color, created_at FROM labels ORDER BY name COLLATE NOCASE').all()
+
+  const createLabel = ({ name, color } = {}) => {
+    const label = String(name ?? '').trim()
+    if (!label) throw badRequest('label_name_required')
+    if (label.length > 32) throw badRequest('label_too_long')
+    const value = String(color ?? '')
+    const resolved = /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : autoLabelColor(label)
+    db.prepare(
+      'INSERT INTO labels (name, color, created_at) VALUES (?, ?, ?) ON CONFLICT(name) DO NOTHING',
+    ).run(label, resolved, now())
+    return db.prepare('SELECT name, color, created_at FROM labels WHERE name = ?').get(label)
+  }
+
+  const listProjects = () =>
+    db
+      .prepare('SELECT DISTINCT project FROM tasks ORDER BY project COLLATE NOCASE')
+      .all()
+      .map((row) => row.project)
 
   const nextId = (project) => {
     const prefix = prefixFor(project)
@@ -165,22 +228,31 @@ export function openStore(path) {
     return (Number(previous.position) + Number(before.position)) / 2
   }
 
-  const createTask = ({ title, body = '', project = 'Inbox', priority = 2, labels = [], blocked_by = [] }) => {
-    if (!title || !String(title).trim()) throw new Error('title is required')
+  const createTask = ({
+    title,
+    body = '',
+    project = 'Inbox',
+    branch = '',
+    priority = 2,
+    labels = [],
+    blocked_by = [],
+  }) => {
+    if (!title || !String(title).trim()) throw badRequest('title_required')
     const stamp = now()
     const id = nextId(project)
     db.prepare(
-      `INSERT INTO tasks (id, title, body, project, status, priority, position, labels, blocked_by, created_at, updated_at)
-       VALUES (?, ?, ?, ?, 'backlog', ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO tasks (id, title, body, project, branch, status, priority, position, labels, blocked_by, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, 'backlog', ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       String(title).trim(),
       String(body),
       String(project),
-      Number(priority),
+      String(branch).trim(),
+      normalizePriority(priority),
       nextPosition('backlog'),
-      JSON.stringify(labels),
-      JSON.stringify(blocked_by),
+      JSON.stringify(normalizeLabels(labels)),
+      JSON.stringify(normalizeLabels(blocked_by)),
       stamp,
       stamp,
     )
@@ -265,13 +337,17 @@ export function openStore(path) {
       fields.push('project = ?')
       params.push(String(patch.project))
     }
+    if (patch.branch !== undefined) {
+      fields.push('branch = ?')
+      params.push(String(patch.branch).trim())
+    }
     if (patch.priority !== undefined) {
       fields.push('priority = ?')
-      params.push(Number(patch.priority))
+      params.push(normalizePriority(patch.priority, task.priority))
     }
     if (patch.labels !== undefined) {
       fields.push('labels = ?')
-      params.push(JSON.stringify(patch.labels))
+      params.push(JSON.stringify(normalizeLabels(patch.labels)))
     }
     if (patch.blocked_by !== undefined) {
       fields.push('blocked_by = ?')
@@ -593,8 +669,11 @@ export function openStore(path) {
     createTask,
     getTask,
     listTasks,
+    listProjects,
     moveTask,
     updateTask,
+    createLabel,
+    listLabels,
     claimTask,
     touchTask,
     releaseTask,

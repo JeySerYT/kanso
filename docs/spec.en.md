@@ -213,4 +213,4 @@ The plugin `~/.config/opencode/plugins/kanso/tui.tsx` is wired into `~/.config/o
 6. Negotiation and autostart through the TUI plugin. Done.
 7. Sidebar, labels, priorities `p0–p4`, branches, and git projects. Done.
 8. RU/EN localization with shared web and CLI dictionaries. Done.
-9. Documentation, `VERSION`, `CHANGELOG`. Done for `0.1.0-alpha.1`.
+9. Documentation, `VERSION`, `CHANGELOG`. Done for `0.2.0-alpha.1`.

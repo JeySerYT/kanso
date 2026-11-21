@@ -362,6 +362,9 @@
             <select id="drawer-status"></select>
           </label>
           <div class="drawer-foot-actions">
+            <button class="button button-ghost button-danger" id="drawer-delete" type="button">
+              <span data-i18n="drawer.delete">Удалить навсегда</span>
+            </button>
             <button class="button button-ghost button-danger" id="drawer-cancel" type="button">
               <span data-i18n="drawer.cancel">Отменить задачу</span>
             </button>
@@ -371,6 +374,19 @@
             </button>
           </div>
         </footer>
+      </div>
+    </dialog>
+
+    <dialog class="confirm" id="delete-dialog" closedby="any" aria-labelledby="delete-dialog-title">
+      <h2 id="delete-dialog-title" data-i18n="delete.title">Удалить задачу?</h2>
+      <p id="delete-dialog-text"></p>
+      <div class="confirm-actions">
+        <button class="button button-soft" type="button" data-close>
+          <span data-i18n="delete.keep">Оставить</span>
+        </button>
+        <button class="button button-danger" id="delete-confirm" type="button">
+          <span data-i18n="delete.confirm">Удалить</span>
+        </button>
       </div>
     </dialog>
 

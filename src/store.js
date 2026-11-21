@@ -410,6 +410,12 @@ export function openStore(path) {
       .map((row) => row.id)
   }
 
+  const activeLeaseOf = (task, session) => {
+    const claim = task.claim
+    if (!claim || new Date(claim.lease_until) <= new Date()) return null
+    return claim.session_id === session ? null : claim
+  }
+
   const claimTask = (id, { session, cwd = '', paths = [], leaseMs = LEASE_MS } = {}) => {
     if (!session) throw new Error('session is required')
 
@@ -423,16 +429,16 @@ export function openStore(path) {
 
       const stamp = now()
       const claim = task.claim
-      const active = claim && new Date(claim.lease_until) > new Date()
-      if (active && claim.session_id !== session) {
+      const foreign = activeLeaseOf(task, session)
+      if (foreign) {
         return {
           ok: false,
           code: 'locked',
           owner: {
-            session: claim.session_id,
-            cwd: claim.cwd,
-            lease_until: claim.lease_until,
-            touched_paths: claim.touched_paths,
+            session: foreign.session_id,
+            cwd: foreign.cwd,
+            lease_until: foreign.lease_until,
+            touched_paths: foreign.touched_paths,
           },
         }
       }
@@ -590,6 +596,38 @@ export function openStore(path) {
     })
   }
 
+  const deleteTask = (id, { session } = {}) => {
+    return tx(() => {
+      const task = getTask(id)
+      if (!task) return { ok: false, code: 'not_found' }
+      const foreign = activeLeaseOf(task, session)
+      if (foreign) {
+        return {
+          ok: false,
+          code: 'leased',
+          owner: { session: foreign.session_id, lease_until: foreign.lease_until },
+        }
+      }
+      // У threads нет FK на tasks: убираем треды задачи явно, сообщения каскадятся за ними.
+      db.prepare('DELETE FROM threads WHERE task_a = ? OR task_b = ?').run(id, id)
+      db.prepare('DELETE FROM tasks WHERE id = ?').run(id)
+      const stamp = now()
+      for (const dependent of db.prepare('SELECT * FROM tasks').all().map(hydrate)) {
+        if (!dependent.blocked_by.includes(id)) continue
+        const remaining = dependent.blocked_by.filter((blocker) => blocker !== id)
+        db.prepare('UPDATE tasks SET blocked_by = ?, updated_at = ? WHERE id = ?').run(
+          JSON.stringify(remaining),
+          stamp,
+          dependent.id,
+        )
+        if (dependent.status === 'backlog' && pendingBlockers(remaining).length === 0) {
+          db.prepare('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?').run('todo', stamp, dependent.id)
+        }
+      }
+      return { ok: true, id }
+    })
+  }
+
   const threadById = (threadId) => {
     const thread = db.prepare('SELECT * FROM threads WHERE id = ?').get(threadId)
     if (!thread) return null
@@ -678,6 +716,7 @@ export function openStore(path) {
     touchTask,
     releaseTask,
     doneTask,
+    deleteTask,
     commentTask,
     listComments,
     threadById,

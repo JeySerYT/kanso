@@ -39,6 +39,7 @@ kanso move ANI-1 in_progress                change status
 kanso comment ANI-1 "text"                  comment
 kanso release ANI-1 --note "state"          release and leave the state
 kanso done ANI-1 --note "result"            close
+kanso delete ANI-1 --yes                    delete permanently (refuses without --yes)
 kanso threads [--state asked]               negotiation threads
 kanso reply THR-1 take-now|wait|split|escalate [text]
 kanso whoami                                session, cwd, current task
@@ -53,6 +54,7 @@ Commands print short text for the agent: what happened, who owns the task, what 
 2. `touch` declares files. An exact path match is a refusal; a directory overlap opens a negotiation thread.
 3. A thread holds at most two messages per side. `wait` yields, two `split` replies divide the paths, two `take-now` or `escalate` replies → `needs_decision` for the human.
 4. `release` and `done` drop the lease; `done` unblocks dependent tasks.
+5. `delete` removes a task permanently along with its comments and threads; another session's active lease forbids deletion. `blocked_by` references in other tasks are cleaned up, and a fully unblocked backlog task moves to todo. In the web UI — a "Delete permanently" button with confirmation.
 
 ## Web board
 

@@ -54,6 +54,10 @@ const drawerTitle = document.querySelector('#task-dialog-title')
 const drawerStatus = document.querySelector('#drawer-status')
 const drawerDone = document.querySelector('#drawer-done')
 const drawerCancel = document.querySelector('#drawer-cancel')
+const drawerDelete = document.querySelector('#drawer-delete')
+const deleteDialog = document.querySelector('#delete-dialog')
+const deleteText = document.querySelector('#delete-dialog-text')
+const deleteConfirm = document.querySelector('#delete-confirm')
 const drawerPriority = document.querySelector('#drawer-priority')
 const drawerLabelPicker = document.querySelector('#drawer-label-picker')
 const commentForm = document.querySelector('#comment-form')
@@ -268,6 +272,9 @@ async function loadBoard() {
     setConnection(true)
     render()
     if (composeDialog.open) renderLabelPicker()
+    // Задачу могли удалить в другой вкладке — не оставляем пустой drawer и диалог удаления.
+    if (taskDialog.open && currentTaskId && !taskById(currentTaskId)) taskDialog.close()
+    if (deleteDialog.open && pendingDeleteId && !taskById(pendingDeleteId)) deleteDialog.close()
   } catch {
     if (Date.now() - lastErrorAt > 5000) {
       lastErrorAt = Date.now()
@@ -1223,6 +1230,40 @@ async function cancelTask() {
   }
 }
 
+/* ---------- Удаление ---------- */
+
+let pendingDeleteId = null
+
+function requestDelete(id) {
+  const task = taskById(id)
+  if (!task) return
+  pendingDeleteId = id
+  deleteText.textContent = t('delete.text', { title: task.title, id: task.id })
+  if (!deleteDialog.open) deleteDialog.showModal()
+}
+
+async function confirmDelete() {
+  const id = pendingDeleteId
+  if (!id) return
+  try {
+    markLocal()
+    await api(`/api/tasks/${encodeURIComponent(id)}`, { method: 'DELETE' })
+    deleteDialog.close()
+    if (currentTaskId === id) taskDialog.close()
+    await loadBoard()
+    if (paletteDialog.open) renderPalette()
+    showToast(t('toast.deleted', { id }))
+    announce(t('toast.deleted', { id }))
+  } catch (error) {
+    // Задачу уже удалили в другой вкладке — диалогу больше нечего подтверждать.
+    if (error.code === 'not_found') {
+      deleteDialog.close()
+      await loadBoard()
+    }
+    showToast(t('toast.deleteFailed', { error: errorText(error) }), { error: true })
+  }
+}
+
 /* ---------- Создание ---------- */
 
 function projectNames() {
@@ -1410,6 +1451,9 @@ function paletteCommands() {
     { kind: 'action', title: t('palette.leased'), run: () => { state.leased = !state.leased; render() } },
     { kind: 'action', title: t('palette.help'), hint: '?', run: () => helpDialog.showModal() },
   ]
+  if (currentTaskId) {
+    items.push({ kind: 'action', title: t('palette.deleteTask'), run: () => requestDelete(currentTaskId) })
+  }
   for (const lang of ['ru', 'en']) {
     if (lang === currentLocale()) continue
     items.push({
@@ -1571,6 +1615,10 @@ async function changeLanguage(next) {
     renderLabelPicker()
     populateComposeProjects(composeProject.value)
   }
+  if (deleteDialog.open && pendingDeleteId) {
+    const task = taskById(pendingDeleteId)
+    if (task) deleteText.textContent = t('delete.text', { title: task.title, id: task.id })
+  }
   if (paletteDialog.open) renderPalette()
 }
 
@@ -1676,6 +1724,11 @@ drawerTitle.addEventListener('dblclick', () => {
 drawerStatus.addEventListener('change', () => moveFromDrawer(drawerStatus.value))
 drawerDone.addEventListener('click', () => moveFromDrawer('done'))
 drawerCancel.addEventListener('click', cancelTask)
+drawerDelete.addEventListener('click', () => requestDelete(currentTaskId))
+deleteConfirm.addEventListener('click', confirmDelete)
+deleteDialog.addEventListener('close', () => {
+  pendingDeleteId = null
+})
 drawerPriority.addEventListener('change', async () => {
   const task = taskById(currentTaskId)
   if (!task) return

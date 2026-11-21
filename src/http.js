@@ -247,7 +247,15 @@ export async function startServer({
       }
 
       if (!action && req.method === 'DELETE') {
-        return sendError(res, 405, 'use_canceled_status')
+        const body = await readBody(req)
+        const who = identityOf(req, body)
+        const result = store.deleteTask(id, { session: who.session })
+        if (!result.ok) {
+          const status = result.code === 'not_found' ? 404 : 409
+          return sendError(res, status, result.code, { owner: result.owner })
+        }
+        broadcast('task.deleted', { id })
+        return sendJson(res, 200, { ok: true, id })
       }
 
       if (!action) return sendError(res, 405, 'method_not_allowed')

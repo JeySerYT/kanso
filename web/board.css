@@ -1928,6 +1928,38 @@ select option:checked {
   gap: 8px;
 }
 
+/* ---------- Подтверждение удаления ---------- */
+
+.confirm {
+  width: min(420px, calc(100vw - 24px));
+  margin: auto;
+  padding: 20px 22px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-0);
+  box-shadow: 12px 12px 0 rgba(0, 0, 0, 0.5);
+}
+
+.confirm[open] {
+  animation: pop 160ms var(--ease) both;
+}
+
+.confirm h2 {
+  margin: 0 0 10px;
+  font-size: 18px;
+}
+
+.confirm p {
+  margin: 0 0 18px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 /* ---------- Палитра ---------- */
 
 .palette {

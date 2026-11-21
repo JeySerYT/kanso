@@ -280,3 +280,69 @@ test('API проектов находит git-репозитории и ветк
   assert.equal(project.current_branch, 'main')
   assert.deepEqual(project.branches.sort(), ['feature', 'main'])
 })
+
+test('DELETE удаляет задачу навсегда', async (t) => {
+  const { call } = await withServer(t)
+  await call('/api/tasks', { method: 'POST', body: { title: 'Мусор', project: 'AniVella' } })
+
+  const removed = await call('/api/tasks/ANI-1', { method: 'DELETE' })
+  assert.equal(removed.status, 200)
+  assert.equal(removed.body.ok, true)
+  assert.equal(removed.body.id, 'ANI-1')
+
+  const card = await call('/api/tasks/ANI-1')
+  assert.equal(card.status, 404)
+  const board = await call('/api/board')
+  assert.deepEqual(board.body.tasks, [])
+})
+
+test('DELETE несуществующей задачи отдаёт 404', async (t) => {
+  const { call } = await withServer(t)
+
+  const removed = await call('/api/tasks/ZZZ-9', { method: 'DELETE' })
+
+  assert.equal(removed.status, 404)
+  assert.equal(removed.body.error, 'not_found')
+})
+
+test('DELETE чужой арендованной задачи отдаёт 409 и владельца', async (t) => {
+  const { call } = await withServer(t)
+  await call('/api/tasks', { method: 'POST', body: { title: 'В работе', project: 'AniVella' } })
+  await call('/api/tasks/ANI-1/claim', { method: 'POST', body: { session: 'ses_a' } })
+
+  const removed = await call('/api/tasks/ANI-1', { method: 'DELETE', body: { session: 'ses_b' } })
+
+  assert.equal(removed.status, 409)
+  assert.equal(removed.body.error, 'leased')
+  assert.equal(removed.body.owner.session, 'ses_a')
+  const board = await call('/api/board')
+  assert.equal(board.body.tasks.length, 1)
+})
+
+test('SSE рассылает task.deleted после удаления', { timeout: 5000 }, async (t) => {
+  const { call, base } = await withServer(t)
+  const controller = new AbortController()
+  t.after(() => controller.abort())
+
+  const response = await fetch(`${base}/api/events`, { signal: controller.signal })
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  const readUntil = async (needle) => {
+    while (!buffer.includes(needle)) {
+      const { value, done } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+    }
+    return buffer.includes(needle)
+  }
+
+  assert.equal(await readUntil('"type":"hello"'), true)
+  await call('/api/tasks', { method: 'POST', body: { title: 'Мусор', project: 'AniVella' } })
+  assert.equal(await readUntil('"type":"task.created"'), true)
+
+  await call('/api/tasks/ANI-1', { method: 'DELETE' })
+
+  assert.equal(await readUntil('"type":"task.deleted"'), true)
+  assert.equal(buffer.includes('"id":"ANI-1"'), true)
+})

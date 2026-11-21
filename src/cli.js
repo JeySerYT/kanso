@@ -224,6 +224,20 @@ const commands = {
     })
   },
 
+  delete(flags, positional) {
+    const id = positional[0]
+    if (!id) throw new Error(t('cli.usage.delete'))
+    if (flags.yes !== true) throw new Error(t('cli.deleteConfirm', { id }))
+    const who = identity(flags)
+    return withStore(flags, (store) => {
+      const result = store.deleteTask(id, { session: who.session })
+      if (result.ok) return t('cli.deleted', { id })
+      if (result.code === 'leased') return t('cli.leased', { id, session: result.owner.session })
+      if (result.code === 'not_found') return t('cli.notFound', { id })
+      return t('cli.code', { code: result.code, id })
+    })
+  },
+
   threads(flags) {
     return withStore(flags, (store) => {
       const threads = store.listThreads({ state: flags.state })

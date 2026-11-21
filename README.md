@@ -39,6 +39,7 @@ kanso move ANI-1 in_progress                сменить статус
 kanso comment ANI-1 "text"                  комментарий
 kanso release ANI-1 --note "state"          освободить, оставить состояние
 kanso done ANI-1 --note "result"            закрыть
+kanso delete ANI-1 --yes                    удалить навсегда (без --yes отказывает)
 kanso threads [--state asked]               треды переговоров
 kanso reply THR-1 take-now|wait|split|escalate [text]
 kanso whoami                                сессия, cwd, текущая задача
@@ -53,6 +54,7 @@ kanso serve [--port 7777] [--db path] [--roots a,b]   доска
 2. `touch` объявляет файлы. Точное совпадение пути — отказ; пересечение по каталогу открывает тред переговоров.
 3. В треде не больше двух сообщений с каждой стороны. `wait` уступает, два `split` делят пути, два `take-now` или `escalate` → `needs_decision` для человека.
 4. `release` и `done` снимают аренду; `done` разблокирует зависимые задачи.
+5. `delete` удаляет задачу навсегда вместе с комментариями и тредами; чужая активная аренда запрещает удаление. Ссылки `blocked_by` у других задач чистятся, полностью разблокированный backlog переезжает в todo. В вебе — кнопка «Удалить навсегда» с подтверждением.
 
 ## Веб-доска
 

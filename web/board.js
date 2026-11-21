@@ -11,6 +11,7 @@ import {
 const STATUS_IDS = ['backlog', 'todo', 'in_progress', 'review', 'done']
 const CANCELED = 'canceled'
 const PRIORITY_MAX = 4
+const SORT_MODES = ['manual', 'priority', 'updated', 'created']
 
 const statusLabel = (id) => t(`status.${id}`)
 const priorityTitle = (priority) => t(`priority.title.p${priority}`)
@@ -25,6 +26,17 @@ const connectionEl = document.querySelector('#connection')
 const connectionText = document.querySelector('#connection-text')
 const live = document.querySelector('#live')
 const toastEl = document.querySelector('#toast')
+const toastText = document.querySelector('#toast-text')
+const toastAction = document.querySelector('#toast-action')
+const toastClose = document.querySelector('#toast-close')
+const toolbar = document.querySelector('#toolbar')
+const filterLabel = document.querySelector('#filter-label')
+const filterPriority = document.querySelector('#filter-priority')
+const filterLeased = document.querySelector('#filter-leased')
+const filterReset = document.querySelector('#filter-reset')
+const sortSelect = document.querySelector('#sort-select')
+const densityToggle = document.querySelector('#density-toggle')
+const densityValue = document.querySelector('#density-value')
 const composeDialog = document.querySelector('#compose-dialog')
 const composeForm = document.querySelector('#compose-form')
 const composeProject = document.querySelector('#compose-project')
@@ -38,9 +50,18 @@ const labelName = document.querySelector('#label-name')
 const labelAdd = document.querySelector('#label-add')
 const languageSelect = document.querySelector('#language')
 const taskDialog = document.querySelector('#task-dialog')
+const drawerTitle = document.querySelector('#task-dialog-title')
 const drawerStatus = document.querySelector('#drawer-status')
 const drawerDone = document.querySelector('#drawer-done')
+const drawerCancel = document.querySelector('#drawer-cancel')
+const drawerPriority = document.querySelector('#drawer-priority')
+const drawerLabelPicker = document.querySelector('#drawer-label-picker')
 const commentForm = document.querySelector('#comment-form')
+const paletteDialog = document.querySelector('#palette-dialog')
+const paletteQuery = document.querySelector('#palette-query')
+const paletteList = document.querySelector('#palette-list')
+const paletteEmpty = document.querySelector('#palette-empty')
+const helpDialog = document.querySelector('#help-dialog')
 const cardTemplate = document.querySelector('#card-template')
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
 
@@ -54,6 +75,11 @@ const state = {
   version: '',
   query: '',
   project: 'all',
+  label: '',
+  priority: '',
+  leased: false,
+  sort: 'manual',
+  density: 'comfortable',
 }
 
 const columns = new Map()
@@ -68,6 +94,25 @@ let pendingRefresh = false
 let toastTimer = 0
 let lastErrorAt = 0
 let composeTarget = 'backlog'
+let paletteItems = []
+let paletteIndex = 0
+
+const storage = {
+  get(key, fallback) {
+    try {
+      return localStorage.getItem(key) ?? fallback
+    } catch {
+      return fallback
+    }
+  },
+  set(key, value) {
+    try {
+      localStorage.setItem(key, value)
+    } catch {
+      // Настройка не сохранится, но интерфейс продолжит работать.
+    }
+  },
+}
 
 const api = async (path, { method = 'GET', body } = {}) => {
   const response = await fetch(path, {
@@ -122,14 +167,39 @@ const announce = (text) => {
   }, 40)
 }
 
-const showToast = (text, { error = false } = {}) => {
+const hideToast = () => {
   window.clearTimeout(toastTimer)
-  toastEl.textContent = text
+  toastEl.hidden = true
+  toastAction.hidden = true
+  toastAction.onclick = null
+}
+
+// Пока фокус внутри тоста (например, на «Вернуть»), авто-скрытие откладывается.
+const dismissToast = () => {
+  if (toastEl.contains(document.activeElement)) {
+    toastTimer = window.setTimeout(dismissToast, 2000)
+    return
+  }
+  hideToast()
+}
+
+const showToast = (text, { error = false, action = null } = {}) => {
+  window.clearTimeout(toastTimer)
+  toastText.textContent = text
   toastEl.classList.toggle('is-error', error)
+  if (action) {
+    toastAction.textContent = action.label
+    toastAction.hidden = false
+    toastAction.onclick = () => {
+      hideToast()
+      action.run()
+    }
+  } else {
+    toastAction.hidden = true
+    toastAction.onclick = null
+  }
   toastEl.hidden = false
-  toastTimer = window.setTimeout(() => {
-    toastEl.hidden = true
-  }, 4200)
+  toastTimer = window.setTimeout(dismissToast, action ? 6500 : 4200)
 }
 
 const setConnection = (isLive) => {
@@ -145,6 +215,20 @@ const leaseLabel = (iso) => {
   if (minutes < 60) return t('lease.minutes', { minutes })
   const hours = Math.floor(minutes / 60)
   return t('lease.hours', { hours, minutes: minutes % 60 })
+}
+
+const pad2 = (value) => String(value).padStart(2, '0')
+
+const leaseCountdown = (iso) => {
+  const left = new Date(iso).getTime() - Date.now()
+  if (left <= 0) return t('lease.expired')
+  const total = Math.floor(left / 1000)
+  const hours = Math.floor(total / 3600)
+  const minutes = Math.floor((total % 3600) / 60)
+  const seconds = total % 60
+  return hours
+    ? `T-${hours}:${pad2(minutes)}:${pad2(seconds)}`
+    : `T-${pad2(minutes)}:${pad2(seconds)}`
 }
 
 const agoLabel = (iso) => {
@@ -167,6 +251,8 @@ const dateLabel = (iso) =>
 const markLocal = () => {
   lastMutation = Date.now()
 }
+
+const taskById = (id) => state.tasks.find((task) => task.id === id)
 
 /* ---------- Загрузка и отрисовка ---------- */
 
@@ -211,8 +297,10 @@ function render() {
   emptyBoard.hidden = !empty
   board.hidden = empty
   projectsSection.hidden = empty
+  toolbar.hidden = empty
 
   renderFilters()
+  renderToolbar()
   if (!empty) renderColumns()
 }
 
@@ -256,8 +344,58 @@ function createChip(value, label, count) {
   return chip
 }
 
+function labelNames() {
+  const names = new Set(state.labels.map((label) => label.name))
+  for (const task of state.tasks) for (const label of task.labels) names.add(label)
+  return [...names].sort((a, b) => collator().compare(a, b))
+}
+
+function renderToolbar() {
+  const names = labelNames()
+  const signature = names.join('|')
+  if (filterLabel.dataset.signature !== signature) {
+    filterLabel.dataset.signature = signature
+    filterLabel.replaceChildren(
+      option('', t('toolbar.any')),
+      ...names.map((name) => option(name, name)),
+    )
+  }
+  filterLabel.value = state.label
+  filterPriority.value = state.priority
+  filterLeased.setAttribute('aria-pressed', String(state.leased))
+  sortSelect.value = state.sort
+  const active = Boolean(state.label || state.priority || state.leased || state.query || state.project !== 'all')
+  filterReset.hidden = !active
+}
+
+function resetFilters() {
+  state.project = 'all'
+  state.query = ''
+  state.label = ''
+  state.priority = ''
+  state.leased = false
+  render()
+}
+
+function setSort(mode) {
+  state.sort = SORT_MODES.includes(mode) ? mode : 'manual'
+  storage.set('kanso.sort', state.sort)
+  render()
+}
+
+function setDensity(value) {
+  state.density = value === 'compact' ? 'compact' : 'comfortable'
+  document.body.classList.toggle('density-compact', state.density === 'compact')
+  densityToggle.setAttribute('aria-pressed', String(state.density === 'compact'))
+  densityValue.textContent = state.density.toUpperCase()
+  storage.set('kanso.density', state.density)
+}
+
 function visibleTask(task) {
   if (state.project !== 'all' && task.project !== state.project) return false
+  if (state.label && !task.labels.includes(state.label)) return false
+  if (state.priority !== '' && String(task.priority) !== state.priority) return false
+  if (state.leased && !task.claim) return false
   if (!state.query) return true
   const needle = state.query.toLowerCase()
   return (
@@ -267,6 +405,19 @@ function visibleTask(task) {
     (task.branch ?? '').toLowerCase().includes(needle) ||
     task.labels.some((label) => label.toLowerCase().includes(needle))
   )
+}
+
+function sortTasks(tasks) {
+  if (state.sort === 'manual') return tasks
+  const list = [...tasks]
+  if (state.sort === 'priority') {
+    list.sort((a, b) => a.priority - b.priority)
+  } else if (state.sort === 'updated') {
+    list.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+  } else if (state.sort === 'created') {
+    list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+  }
+  return list
 }
 
 function renderColumns() {
@@ -293,9 +444,9 @@ function renderColumns() {
       columns.set(def.id, column)
       board.append(column)
     }
-    const count = grouped.get(def.id)?.length ?? 0
-    column.querySelector('.column-count').textContent = String(count)
-    reconcile(column.querySelector('.column-list'), grouped.get(def.id) ?? [], existing)
+    const tasks = sortTasks(grouped.get(def.id) ?? [])
+    column.querySelector('.column-count').textContent = String(tasks.length)
+    reconcile(column.querySelector('.column-list'), tasks, existing)
   }
 
   for (const card of existing.values()) card.remove()
@@ -322,11 +473,9 @@ function createColumn(def) {
   head.append(el('span', 'column-dot'))
   head.append(el('h2', 'column-title', def.label), el('span', 'column-count', '0'))
 
-  const add = el('button', 'column-add')
+  const add = el('button', 'column-add', '+')
   add.type = 'button'
   add.setAttribute('aria-label', t('column.add', { status: def.label }))
-  add.innerHTML =
-    '<svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4.5v11M4.5 10h11"></path></svg>'
   add.addEventListener('click', () => openCompose(def.id))
   head.append(add)
 
@@ -354,10 +503,11 @@ function reconcile(list, tasks, existing) {
   })
 
   if (!tasks.length) {
+    const filtered = state.query || state.label || state.priority !== '' || state.leased
     const empty = el(
       'div',
       'column-empty',
-      t(state.query ? 'board.nothingFound' : 'board.drop'),
+      t(filtered ? 'board.nothingFound' : 'board.drop'),
     )
     list.append(empty)
   }
@@ -379,13 +529,56 @@ function createCard(task) {
   const card = document.importNode(cardTemplate.content.firstElementChild, true)
   card.dataset.id = task.id
   card.setAttribute('role', 'listitem')
+  // Одиночный клик открывает drawer с задержкой: dblclick успевает отменить
+  // открытие и начать инлайн-переименование. Клавиатурный клик (detail 0) — сразу.
+  let openTimer = 0
   card.addEventListener('click', (event) => {
-    if (event.target.closest('.card-handle')) return
-    openTask(task.id)
+    if (event.target.closest('.card-handle, .card-priority, .card-title-input, .label')) return
+    if (event.detail === 1) {
+      window.clearTimeout(openTimer)
+      openTimer = window.setTimeout(() => openTask(card.dataset.id), 250)
+    } else if (event.detail === 0) {
+      openTask(card.dataset.id)
+    }
   })
   card.querySelector('.card-handle').addEventListener('pointerdown', onPointerDown)
   card.querySelector('.card-handle').addEventListener('keydown', onHandleKeyDown)
+
+  const title = card.querySelector('.card-title')
+  title.addEventListener('dblclick', (event) => {
+    event.stopPropagation()
+    window.clearTimeout(openTimer)
+    const current = taskById(card.dataset.id)
+    if (current) startTitleEdit(title, current)
+  })
+
+  const priority = card.querySelector('.card-priority')
+  priority.append(
+    ...Array.from({ length: PRIORITY_MAX + 1 }, (_, value) => option(String(value), `p${value}`)),
+  )
+  priority.addEventListener('click', (event) => event.stopPropagation())
+  priority.addEventListener('change', () => changePriority(card.dataset.id, priority))
+
   return card
+}
+
+async function changePriority(id, select) {
+  const task = taskById(id)
+  if (!task) return
+  const value = Number(select.value)
+  try {
+    markLocal()
+    const { task: updated } = await api(`/api/tasks/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: { priority: value },
+    })
+    Object.assign(task, updated)
+    render()
+    announce(t('announce.priority', { id, priority: `p${value}` }))
+  } catch (error) {
+    select.value = String(task.priority)
+    showToast(t('toast.priorityFailed', { error: errorText(error) }), { error: true })
+  }
 }
 
 function labelChip(name, className = 'label') {
@@ -396,23 +589,33 @@ function labelChip(name, className = 'label') {
 
 function updateCard(card, task) {
   card.dataset.updated = task.updated_at
+  card.dataset.priority = String(task.priority)
   card.style.setProperty('--hue', hueOf(task.project))
 
   card.querySelector('.card-id').textContent = task.id
   const title = card.querySelector('.card-title')
   title.textContent = task.title
   title.setAttribute('aria-label', t('card.open', { id: task.id, title: task.title }))
+  title.title = t('card.renameHint')
 
   const handle = card.querySelector('.card-handle')
   handle.setAttribute('aria-label', t('card.move', { id: task.id }))
 
   const labels = card.querySelector('.card-labels')
-  labels.replaceChildren(
-    ...task.labels.slice(0, 3).map((label) => labelChip(label)),
-    ...(task.labels.length > 3
-      ? [el('span', 'label', `+${task.labels.length - 3}`)]
-      : []),
-  )
+  const chips = task.labels.slice(0, 3).map((label) => {
+    const chip = labelChip(label)
+    chip.title = t('card.labelFilter', { name: label })
+    chip.addEventListener('click', (event) => {
+      event.stopPropagation()
+      state.label = state.label === label ? '' : label
+      render()
+    })
+    return chip
+  })
+  if (task.labels.length > 3) {
+    chips.push(el('span', 'label label-more', `+${task.labels.length - 3}`))
+  }
+  labels.replaceChildren(...chips)
 
   const projectName = card.querySelector('.project-name')
   projectName.textContent = task.project
@@ -424,9 +627,10 @@ function updateCard(card, task) {
   if (task.branch) branch.title = t('card.branch', { branch: task.branch })
 
   const priority = card.querySelector('.card-priority')
-  priority.textContent = `p${task.priority}`
+  priority.value = String(task.priority)
   priority.dataset.priority = String(task.priority)
   priority.title = priorityTitle(task.priority) ?? t('priority.unknown')
+  priority.setAttribute('aria-label', t('card.priorityAria', { id: task.id }))
 
   const owner = card.querySelector('.card-owner')
   const lease = card.querySelector('.card-lease')
@@ -436,12 +640,61 @@ function updateCard(card, task) {
     owner.querySelector('.owner-avatar').style.setProperty('--owner-hue', hueOf(task.claim.session))
     owner.querySelector('.owner-name').textContent = shortSession(task.claim.session)
     lease.hidden = false
-    lease.textContent = leaseLabel(task.claim.lease_until)
-    lease.classList.toggle('is-stale', Boolean(task.stale))
+    lease.title = leaseLabel(task.claim.lease_until)
+    lease.querySelector('.lease-time').textContent = leaseCountdown(task.claim.lease_until)
+    lease.classList.toggle('is-stale', new Date(task.claim.lease_until).getTime() <= Date.now())
   } else {
     owner.hidden = true
     lease.hidden = true
   }
+}
+
+/* ---------- Инлайн-переименование ---------- */
+
+function startTitleEdit(anchor, task, { large = false } = {}) {
+  const input = el('input', large ? 'card-title-input title-edit-lg' : 'card-title-input')
+  input.type = 'text'
+  input.value = task.title
+  input.setAttribute('aria-label', t('card.renameAria', { id: task.id }))
+  anchor.replaceWith(input)
+  input.focus()
+  input.select()
+
+  let done = false
+  const finish = async (save) => {
+    if (done) return
+    done = true
+    const value = input.value.trim()
+    input.replaceWith(anchor)
+    anchor.textContent = task.title
+    if (!save || !value || value === task.title) return
+    try {
+      markLocal()
+      const { task: updated } = await api(`/api/tasks/${encodeURIComponent(task.id)}`, {
+        method: 'PATCH',
+        body: { title: value },
+      })
+      Object.assign(task, updated)
+      anchor.textContent = task.title
+      render()
+      announce(t('announce.renamed', { id: task.id }))
+    } catch (error) {
+      showToast(t('toast.renameFailed', { error: errorText(error) }), { error: true })
+    }
+  }
+
+  input.addEventListener('click', (event) => event.stopPropagation())
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      void finish(true)
+    } else if (event.key === 'Escape') {
+      event.preventDefault()
+      event.stopPropagation()
+      void finish(false)
+    }
+  })
+  input.addEventListener('blur', () => void finish(true))
 }
 
 /* ---------- Перетаскивание ---------- */
@@ -685,7 +938,7 @@ function applyMove(card, status, beforeId, { animate = true } = {}) {
 
   const sourceList = card.parentElement
   const sameColumn = sourceList === targetList
-  const task = state.tasks.find((item) => item.id === card.dataset.id)
+  const task = taskById(card.dataset.id)
 
   if (task) {
     task.status = status
@@ -748,7 +1001,8 @@ async function openTask(id) {
 function renderDrawer({ task, comments, threads }) {
   document.querySelector('#drawer-id').textContent = task.id
   document.querySelector('#drawer-project').textContent = task.project
-  document.querySelector('#task-dialog-title').textContent = task.title
+  drawerTitle.textContent = task.title
+  drawerTitle.title = t('card.renameHint')
 
   const badges = document.querySelector('#drawer-badges')
   const badgeItems = [
@@ -759,7 +1013,10 @@ function renderDrawer({ task, comments, threads }) {
   badgeItems[1].dataset.kind = `priority-${task.priority}`
   if (task.branch) badgeItems.push(el('span', 'badge badge-branch', task.branch))
   if (task.claim) {
-    badgeItems.push(el('span', 'badge', t(task.stale ? 'drawer.badge.stale' : 'drawer.badge.claimed')))
+    const stale = new Date(task.claim.lease_until).getTime() <= Date.now()
+    const leaseBadge = el('span', 'badge badge-lease', t(stale ? 'drawer.badge.stale' : 'drawer.badge.claimed'))
+    leaseBadge.classList.toggle('is-stale', stale)
+    badgeItems.push(leaseBadge)
   }
   for (const label of task.labels) {
     const chip = labelChip(label, 'badge badge-label')
@@ -771,26 +1028,35 @@ function renderDrawer({ task, comments, threads }) {
 
   const meta = document.querySelector('#drawer-meta')
   const entries = [
-    [t('drawer.meta.created'), dateLabel(task.created_at), false],
-    [t('drawer.meta.updated'), agoLabel(task.updated_at), false],
+    [t('drawer.meta.created'), dateLabel(task.created_at), false, ''],
+    [t('drawer.meta.updated'), agoLabel(task.updated_at), false, ''],
   ]
-  if (task.branch) entries.push([t('drawer.meta.branch'), task.branch, true])
+  if (task.branch) entries.push([t('drawer.meta.branch'), task.branch, true, ''])
   if (task.claim) {
-    entries.push([t('drawer.meta.owner'), task.claim.session, true])
-    entries.push([t('drawer.meta.lease'), leaseLabel(task.claim.lease_until), true])
+    const stale = new Date(task.claim.lease_until).getTime() <= Date.now()
+    entries.push([t('drawer.meta.owner'), task.claim.session, true, ''])
+    entries.push([
+      t('drawer.meta.lease'),
+      leaseCountdown(task.claim.lease_until),
+      true,
+      stale ? 'lease-stale' : 'lease-live',
+      task.claim.lease_until,
+    ])
   }
   if (task.claim?.touched_paths?.length) {
-    entries.push([t('drawer.meta.files'), task.claim.touched_paths.join(', '), true])
+    entries.push([t('drawer.meta.files'), task.claim.touched_paths.join(', '), true, ''])
   }
   if (task.blocked_by.length) {
-    entries.push([t('drawer.meta.blockers'), task.blocked_by.join(', '), true])
+    entries.push([t('drawer.meta.blockers'), task.blocked_by.join(', '), true, ''])
   }
 
   meta.replaceChildren(
-    ...entries.map(([term, value, mono]) => {
+    ...entries.map(([term, value, mono, className, leaseUntil]) => {
       const block = el('div')
       block.append(el('dt', null, term))
-      block.append(el('dd', mono ? 'mono' : null, value))
+      const dd = el('dd', [mono ? 'mono' : '', className].filter(Boolean).join(' '), value)
+      if (leaseUntil) dd.dataset.leaseDd = leaseUntil
+      block.append(dd)
       return block
     }),
   )
@@ -803,6 +1069,16 @@ function renderDrawer({ task, comments, threads }) {
     }),
   )
   drawerDone.disabled = task.status === 'done' || task.status === CANCELED
+  drawerCancel.disabled = task.status === CANCELED
+
+  drawerPriority.replaceChildren(
+    ...Array.from({ length: PRIORITY_MAX + 1 }, (_, value) => {
+      const node = option(String(value), t(`priority.option.p${value}`))
+      node.selected = value === task.priority
+      return node
+    }),
+  )
+  renderDrawerLabels(task)
 
   const threadSection = document.querySelector('#drawer-threads-section')
   const threadList = document.querySelector('#drawer-threads')
@@ -819,6 +1095,40 @@ function renderDrawer({ task, comments, threads }) {
 
   commentForm.dataset.taskId = task.id
   commentForm.reset()
+}
+
+function renderDrawerLabels(task) {
+  if (!state.labels.length) {
+    drawerLabelPicker.replaceChildren(el('span', 'label-empty', t('compose.noLabels')))
+    return
+  }
+  drawerLabelPicker.replaceChildren(
+    ...state.labels.map((label) => {
+      const chip = el('button', 'label-choice', label.name)
+      chip.type = 'button'
+      chip.style.setProperty('--label-color', label.color)
+      chip.setAttribute('aria-pressed', String(task.labels.includes(label.name)))
+      chip.addEventListener('click', () => toggleDrawerLabel(task, label.name))
+      return chip
+    }),
+  )
+}
+
+async function toggleDrawerLabel(task, name) {
+  const labels = task.labels.includes(name)
+    ? task.labels.filter((label) => label !== name)
+    : [...task.labels, name]
+  try {
+    markLocal()
+    await api(`/api/tasks/${encodeURIComponent(task.id)}`, {
+      method: 'PATCH',
+      body: { labels },
+    })
+    await openTask(task.id)
+    loadBoard()
+  } catch (error) {
+    showToast(t('toast.labelsFailed', { error: errorText(error) }), { error: true })
+  }
 }
 
 function renderThread(thread) {
@@ -872,6 +1182,42 @@ async function moveFromDrawer(status) {
     })
     await loadBoard()
     await openTask(currentTaskId)
+  } catch (error) {
+    showToast(t('toast.statusFailed', { error: errorText(error) }), { error: true })
+  }
+}
+
+async function cancelTask() {
+  const task = taskById(currentTaskId)
+  if (!task || task.status === CANCELED) return
+  const previous = task.status
+  const id = task.id
+  try {
+    markLocal()
+    await api(`/api/tasks/${encodeURIComponent(id)}/move`, {
+      method: 'POST',
+      body: { status: CANCELED },
+    })
+    taskDialog.close()
+    await loadBoard()
+    showToast(t('toast.canceled', { id }), {
+      action: {
+        label: t('toast.undo'),
+        run: async () => {
+          try {
+            markLocal()
+            await api(`/api/tasks/${encodeURIComponent(id)}/move`, {
+              method: 'POST',
+              body: { status: previous },
+            })
+            await loadBoard()
+            showToast(t('toast.restored', { id }))
+          } catch (error) {
+            showToast(t('toast.statusFailed', { error: errorText(error) }), { error: true })
+          }
+        },
+      },
+    })
   } catch (error) {
     showToast(t('toast.statusFailed', { error: errorText(error) }), { error: true })
   }
@@ -1053,16 +1399,170 @@ async function submitCompose(event) {
   }
 }
 
+/* ---------- Командная палитра ---------- */
+
+function paletteCommands() {
+  const items = [
+    { kind: 'action', title: t('palette.newTask'), hint: 'C', run: () => openCompose() },
+    { kind: 'action', title: t('palette.search'), hint: '/', run: () => { search.focus(); search.select() } },
+    { kind: 'action', title: t('palette.reset'), run: resetFilters },
+    { kind: 'action', title: t('palette.density'), run: () => setDensity(state.density === 'compact' ? 'comfortable' : 'compact') },
+    { kind: 'action', title: t('palette.leased'), run: () => { state.leased = !state.leased; render() } },
+    { kind: 'action', title: t('palette.help'), hint: '?', run: () => helpDialog.showModal() },
+  ]
+  for (const lang of ['ru', 'en']) {
+    if (lang === currentLocale()) continue
+    items.push({
+      kind: 'action',
+      title: t('palette.language', { language: lang === 'ru' ? 'Русский' : 'English' }),
+      run: () => changeLanguage(lang),
+    })
+  }
+  for (const mode of SORT_MODES) {
+    items.push({ kind: 'sort', title: t(`sort.${mode}`), run: () => setSort(mode) })
+  }
+  const projects = [...new Set(state.tasks.map((task) => task.project))].sort((a, b) =>
+    collator().compare(a, b),
+  )
+  for (const project of projects) {
+    items.push({ kind: 'project', title: project, run: () => { state.project = project; render() } })
+  }
+  for (const label of labelNames()) {
+    items.push({ kind: 'label', title: label, run: () => { state.label = label; render() } })
+  }
+  return items
+}
+
+function renderPalette() {
+  const query = paletteQuery.value.trim().toLowerCase()
+  let items = paletteCommands()
+  if (query) {
+    items = items.filter((item) => item.title.toLowerCase().includes(query))
+    const tasks = state.tasks
+      .filter(
+        (task) =>
+          task.id.toLowerCase().includes(query) || task.title.toLowerCase().includes(query),
+      )
+      .slice(0, 6)
+      .map((task) => ({
+        kind: 'task',
+        title: `${task.id} ${task.title}`,
+        run: () => openTask(task.id),
+      }))
+    items.push(...tasks)
+  }
+
+  paletteItems = items
+  paletteIndex = 0
+  paletteEmpty.hidden = items.length > 0
+  paletteList.replaceChildren(
+    ...items.map((item, index) => {
+      const li = el('li', 'palette-item')
+      li.id = `palette-opt-${index}`
+      li.setAttribute('role', 'option')
+      li.setAttribute('aria-selected', String(index === 0))
+      li.append(el('span', null, item.title))
+      const kind = el('span', 'palette-kind', t(`palette.kind.${item.kind}`))
+      if (item.hint) kind.textContent = `${item.hint} · ${kind.textContent}`
+      li.append(kind)
+      li.addEventListener('click', () => runPalette(index))
+      li.addEventListener('mousemove', () => setPaletteIndex(index))
+      return li
+    }),
+  )
+  syncPaletteActive()
+}
+
+function setPaletteIndex(index) {
+  if (!paletteItems.length) return
+  paletteIndex = (index + paletteItems.length) % paletteItems.length
+  syncPaletteActive()
+}
+
+function syncPaletteActive() {
+  const nodes = [...paletteList.children]
+  nodes.forEach((node, index) => {
+    node.setAttribute('aria-selected', String(index === paletteIndex))
+  })
+  const active = nodes[paletteIndex]
+  if (active) {
+    active.scrollIntoView({ block: 'nearest' })
+    paletteQuery.setAttribute('aria-activedescendant', active.id)
+  } else {
+    paletteQuery.removeAttribute('aria-activedescendant')
+  }
+}
+
+function runPalette(index) {
+  const item = paletteItems[index]
+  if (!item) return
+  paletteDialog.close()
+  item.run()
+}
+
+function openPalette() {
+  paletteQuery.value = ''
+  renderPalette()
+  if (!paletteDialog.open) paletteDialog.showModal()
+  paletteQuery.focus()
+}
+
+/* ---------- Навигация с клавиатуры ---------- */
+
+function anyDialogOpen() {
+  return composeDialog.open || taskDialog.open || paletteDialog.open || helpDialog.open
+}
+
+function focusCard(direction) {
+  const cols = [...board.querySelectorAll('.column')].map((column) => [
+    ...column.querySelectorAll('.card .card-title'),
+  ])
+  const active = document.activeElement
+  let ci = -1
+  let ri = -1
+  cols.forEach((cards, index) => {
+    const row = cards.indexOf(active)
+    if (row !== -1) {
+      ci = index
+      ri = row
+    }
+  })
+
+  if (ci === -1) {
+    const first = cols.find((cards) => cards.length)
+    first?.[0]?.focus()
+    return
+  }
+
+  if (direction === 'up' || direction === 'down') {
+    const next = direction === 'up' ? ri - 1 : ri + 1
+    cols[ci][Math.max(0, Math.min(cols[ci].length - 1, next))]?.focus()
+    return
+  }
+
+  const step = direction === 'left' ? -1 : 1
+  for (let index = ci + step; index >= 0 && index < cols.length; index += step) {
+    if (cols[index].length) {
+      cols[index][Math.min(ri, cols[index].length - 1)].focus()
+      return
+    }
+  }
+}
+
 /* ---------- Язык ---------- */
 
 async function changeLanguage(next) {
   await useLanguage(next)
   languageSelect.value = currentLocale()
   applyStaticTranslations()
+  // applyStaticTranslations возвращает текст соединения к начальному ключу:
+  // восстанавливаем фактическое состояние канала.
+  setConnection(connectionEl.classList.contains('is-live'))
 
   columns.clear()
   board.replaceChildren()
   filters.dataset.signature = ''
+  filterLabel.dataset.signature = ''
   render()
 
   if (taskDialog.open && currentTaskId) {
@@ -1071,6 +1571,7 @@ async function changeLanguage(next) {
     renderLabelPicker()
     populateComposeProjects(composeProject.value)
   }
+  if (paletteDialog.open) renderPalette()
 }
 
 /* ---------- События ---------- */
@@ -1124,6 +1625,27 @@ search.addEventListener('input', () => {
 document.querySelector('#new-task').addEventListener('click', () => openCompose())
 document.querySelector('#empty-create').addEventListener('click', () => openCompose())
 
+filterLabel.addEventListener('change', () => {
+  state.label = filterLabel.value
+  render()
+})
+filterPriority.addEventListener('change', () => {
+  state.priority = filterPriority.value
+  render()
+})
+filterLeased.addEventListener('click', () => {
+  state.leased = !state.leased
+  render()
+})
+filterReset.addEventListener('click', resetFilters)
+toastClose.addEventListener('click', hideToast)
+sortSelect.addEventListener('change', () => setSort(sortSelect.value))
+densityToggle.addEventListener('click', () =>
+  setDensity(state.density === 'compact' ? 'comfortable' : 'compact'),
+)
+document.querySelector('#palette-open').addEventListener('click', openPalette)
+document.querySelector('#help-open').addEventListener('click', () => helpDialog.showModal())
+
 composeProject.addEventListener('change', () => {
   syncNewProjectField(true)
   populateComposeBranches()
@@ -1147,8 +1669,28 @@ taskDialog.addEventListener('close', () => {
   currentTaskId = null
 })
 
+drawerTitle.addEventListener('dblclick', () => {
+  const task = taskById(currentTaskId)
+  if (task) startTitleEdit(drawerTitle, task, { large: true })
+})
 drawerStatus.addEventListener('change', () => moveFromDrawer(drawerStatus.value))
 drawerDone.addEventListener('click', () => moveFromDrawer('done'))
+drawerCancel.addEventListener('click', cancelTask)
+drawerPriority.addEventListener('change', async () => {
+  const task = taskById(currentTaskId)
+  if (!task) return
+  try {
+    markLocal()
+    await api(`/api/tasks/${encodeURIComponent(task.id)}`, {
+      method: 'PATCH',
+      body: { priority: Number(drawerPriority.value) },
+    })
+    await openTask(task.id)
+    loadBoard()
+  } catch (error) {
+    showToast(t('toast.priorityFailed', { error: errorText(error) }), { error: true })
+  }
+})
 
 commentForm.addEventListener('submit', async (event) => {
   event.preventDefault()
@@ -1168,20 +1710,56 @@ commentForm.addEventListener('submit', async (event) => {
   }
 })
 
+paletteQuery.addEventListener('input', renderPalette)
+paletteQuery.addEventListener('keydown', (event) => {
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    setPaletteIndex(paletteIndex + 1)
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    setPaletteIndex(paletteIndex - 1)
+  } else if (event.key === 'Enter') {
+    event.preventDefault()
+    runPalette(paletteIndex)
+  }
+})
+
 document.addEventListener('keydown', (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault()
+    if (paletteDialog.open) paletteDialog.close()
+    else openPalette()
+    return
+  }
+
   const target = event.target
   const typing =
     target instanceof HTMLElement &&
     (target.matches('input, textarea, select') || target.isContentEditable)
   if (typing || event.metaKey || event.ctrlKey || event.altKey) return
+  if (anyDialogOpen() || drag || board.hidden) return
 
-  if (event.key === '/') {
+  const key = event.key
+  if (key === '/') {
     event.preventDefault()
     search.focus()
     search.select()
-  } else if (event.key.toLowerCase() === 'n' && !composeDialog.open && !taskDialog.open) {
+  } else if (key === '?') {
+    event.preventDefault()
+    helpDialog.showModal()
+  } else if (key.toLowerCase() === 'n' || key.toLowerCase() === 'c') {
     event.preventDefault()
     openCompose()
+  } else if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
+    event.preventDefault()
+    focusCard(key.slice(5).toLowerCase())
+  } else if (/^[1-5]$/.test(key)) {
+    const card = document.activeElement?.closest?.('.card')
+    if (!card) return
+    event.preventDefault()
+    const status = STATUS_IDS[Number(key) - 1]
+    applyMove(card, status, null)
+    announce(t('announce.moved', { title: taskById(card.dataset.id)?.title ?? card.dataset.id, status: statusLabel(status) }))
   }
 })
 
@@ -1261,6 +1839,10 @@ async function boot() {
   await initI18n()
   languageSelect.value = currentLocale()
   applyStaticTranslations()
+  state.sort = SORT_MODES.includes(storage.get('kanso.sort', 'manual'))
+    ? storage.get('kanso.sort', 'manual')
+    : 'manual'
+  setDensity(storage.get('kanso.density', 'comfortable'))
   await loadBoard()
   connectEvents()
   void loadProjects()
@@ -1268,16 +1850,29 @@ async function boot() {
 
 boot()
 
+// Телеметрия аренды: отсчёт обновляется раз в секунду, только текст и классы.
 window.setInterval(() => {
+  const now = Date.now()
   for (const card of board.querySelectorAll('.card')) {
-    const task = state.tasks.find((item) => item.id === card.dataset.id)
+    const task = taskById(card.dataset.id)
     const lease = card.querySelector('.card-lease')
-    if (task?.claim && !lease.hidden) {
-      lease.textContent = leaseLabel(task.claim.lease_until)
-      lease.classList.toggle('is-stale', new Date(task.claim.lease_until) <= new Date())
+    if (!task?.claim) {
+      lease.hidden = true
+      continue
     }
+    const stale = new Date(task.claim.lease_until).getTime() <= now
+    lease.hidden = false
+    lease.classList.toggle('is-stale', stale)
+    lease.querySelector('.lease-time').textContent = leaseCountdown(task.claim.lease_until)
   }
-}, 30_000)
+  const dd = taskDialog.open ? document.querySelector('[data-lease-dd]') : null
+  if (dd) {
+    const stale = new Date(dd.dataset.leaseDd).getTime() <= now
+    dd.textContent = leaseCountdown(dd.dataset.leaseDd)
+    dd.classList.toggle('lease-live', !stale)
+    dd.classList.toggle('lease-stale', stale)
+  }
+}, 1000)
 
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) loadBoard()

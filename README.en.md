@@ -56,9 +56,11 @@ Commands print short text for the agent: what happened, who owns the task, what 
 
 ## Web board
 
-Navigation lives in the sidebar: brand, "New task", search, projects with task counts, connection status, version, and the language switch. There are five columns — Backlog, To do, In progress, Review, Done; "Canceled" appears when canceled tasks exist. The board scrolls horizontally with the mouse wheel.
+Navigation lives in the sidebar: brand, "New task", search, projects with task counts, connection status, version, and the language switch. Above the board sits a toolbar: label and priority filters, a "Leased" toggle, sort (manual / priority / updated / created), COMPACT/COMFORT density, "Menu", and the shortcut help. Sort and density persist between sessions. There are five columns — Backlog, To do, In progress, Review, Done; "Canceled" appears when canceled tasks exist. The board scrolls horizontally with the mouse wheel.
 
-A card shows the project, branch, priority `p0–p4`, and colored labels. Cards can be dragged with the mouse (the card follows the cursor and counters and empty states update immediately) or moved from the keyboard (`Alt` + arrows). The drawer shows the body, branch, labels, comments, threads, and lease.
+A card shows the project, branch, priority `p0–p4` (changeable on the card), colored labels (clicking a label sets the filter), owner, and a `T-MM:SS` lease countdown; an expired lease is highlighted. Double-clicking the title renames the task inline. Cards can be dragged with the mouse or moved from the keyboard (`Alt` + arrows); plain arrows move focus, `1–5` set the focused card's status, `Enter` opens the drawer. The command palette (`Ctrl/Cmd+K`) creates tasks, searches, jumps to projects, filters, sorts, and switches language; `/` focuses search, `C` creates a task, `?` shows the cheat sheet. The drawer shows the body, a meta grid, priority and label editing, comments, threads, and the lease; "Cancel task" can be undone from a toast.
+
+The board style is a "dispatch console": CRT terminal, monospaced data, zero border radius, one red accent and a green lease indicator. Redesign tokens and decisions live in `docs/redesign.en.md`.
 
 When creating a task, the project is picked from the discovered git repositories and the branch from that project's branches. A new project and another branch can be typed in manually. Labels are picked by clicking the shared registry; a new label can be created on the spot.
 

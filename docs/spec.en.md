@@ -161,13 +161,15 @@ Commands print short text for the agent: what happened, who owns the task, what 
 
 Navigation lives in the sidebar, not in a top bar: brand, "New task", search, projects with task counts, connection status, version, and language switch. Columns: Backlog, Todo, In Progress, Review, Done; "Canceled" appears when canceled tasks exist. Horizontal board scrolling works with the mouse wheel and `Shift` + wheel.
 
-A card shows the ID, title, project, branch, priority `p0–p4`, colored labels, owner, and remaining lease. The drawer shows the body, branch, labels, comments, negotiation threads, status change, a "Done" button, and the comment form.
+A card shows the ID, title, project, branch, priority `p0–p4` (changeable via a select on the card), colored labels (clicking a label sets the filter), owner, and a `T-MM:SS` lease countdown ticking every second; an expired lease gets hazard stripes. Double-clicking the title renames the task inline. The drawer shows the body, a meta grid (created, updated, branch, owner, lease, files, blockers), priority and label editing, comments, negotiation threads, status change, a "Done" button, and "Cancel task" with undo via a toast.
+
+A toolbar above the board holds label and priority filters, a "Leased" toggle, sort (manual / priority / updated / created), COMPACT/COMFORT density, "Menu", and the shortcut help. Sort and density persist in `localStorage`. The command palette (`Ctrl/Cmd+K`) creates tasks, searches, jumps to projects, filters by label, sorts, switches density and language, and resets filters. Hotkeys: `/` search, `C`/`N` new task, `?` help, arrows move focus across cards, `Enter` opens the drawer, `1–5` set the focused card's status.
 
 The create form holds a title, a project from the discovered git repositories or "New project…", a branch of the selected project or "Another branch…", a priority, a description, and labels. Labels are picked by clicking the shared registry; a new label can be created right there and gets a color from the palette.
 
 Drag&drop changes `status` and order: the card follows the cursor as a separate layer, the original stays dimmed, and counters and empty states update from state. The same works from the keyboard (`Alt` + arrows) and keeps focus on the card handle.
 
-Style: dark Linear-like, dense grid, small typography, hairline borders, no heavy shadows. Font — Geist, not Inter. Native `select` and `option` are forced dark so the list stays readable.
+Style: a "dispatch console" CRT terminal (industrial brutalism). Geist Mono for data and navigation, Geist Sans for task titles; no border radius, 1px borders, a single hazard-red accent, terminal green only for the lease indicator; scanlines and grain as a fixed overlay. Native `select` and `option` are forced dark. Tokens and decisions live in `docs/redesign.en.md`.
 
 SSE events arrive on any database change. The server compares `PRAGMA data_version` and broadcasts `board.synced`, so edits from the CLI in another process show up without a reload.
 

@@ -10,7 +10,7 @@
   </head>
   <body>
     <a class="skip-link" href="#board" data-i18n="app.skip">К задачам</a>
-    <div class="atmosphere" aria-hidden="true"></div>
+    <div class="crt" aria-hidden="true"></div>
 
     <div class="app">
       <aside class="sidebar" data-i18n-aria-label="sidebar.aria" aria-label="Панель управления">
@@ -22,16 +22,11 @@
 
           <button class="button button-primary new-task" id="new-task" type="button">
             <span data-i18n="sidebar.newTask">Новая задача</span>
-            <span class="button-icon" aria-hidden="true">
-              <svg class="icon" viewBox="0 0 20 20"><path d="M10 4.5v11M4.5 10h11"></path></svg>
-            </span>
+            <span class="button-glyph" aria-hidden="true">+</span>
           </button>
 
           <label class="search" for="search">
-            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
-              <circle cx="8.75" cy="8.75" r="5.25"></circle>
-              <path d="m12.7 12.7 3.8 3.8"></path>
-            </svg>
+            <span class="search-prompt" aria-hidden="true">&gt;</span>
             <input
               id="search"
               type="search"
@@ -76,19 +71,76 @@
       </aside>
 
       <div class="workspace">
+        <div class="toolbar" id="toolbar" role="toolbar" data-i18n-aria-label="toolbar.aria" aria-label="Фильтры и вид" hidden>
+          <div class="toolbar-group">
+            <label class="tool-field">
+              <span data-i18n="toolbar.label">Метка</span>
+              <select id="filter-label"></select>
+            </label>
+            <label class="tool-field">
+              <span data-i18n="toolbar.priority">Приоритет</span>
+              <select id="filter-priority">
+                <option value="" data-i18n="toolbar.any">любой</option>
+                <option value="0">p0</option>
+                <option value="1">p1</option>
+                <option value="2">p2</option>
+                <option value="3">p3</option>
+                <option value="4">p4</option>
+              </select>
+            </label>
+            <button class="tool-toggle" id="filter-leased" type="button" aria-pressed="false">
+              <span class="toggle-square" aria-hidden="true"></span>
+              <span data-i18n="toolbar.leased">В аренде</span>
+            </button>
+            <button class="button button-ghost tool-reset" id="filter-reset" type="button" hidden>
+              <span data-i18n="toolbar.reset">Сброс</span>
+              <span class="button-glyph" aria-hidden="true">×</span>
+            </button>
+          </div>
+
+          <div class="toolbar-group">
+            <label class="tool-field">
+              <span data-i18n="toolbar.sort">Сортировка</span>
+              <select id="sort-select">
+                <option value="manual" data-i18n="sort.manual">вручную</option>
+                <option value="priority" data-i18n="sort.priority">по приоритету</option>
+                <option value="updated" data-i18n="sort.updated">по обновлению</option>
+                <option value="created" data-i18n="sort.created">по созданию</option>
+              </select>
+            </label>
+            <button class="tool-toggle" id="density-toggle" type="button" aria-pressed="false">
+              <span data-i18n="toolbar.density">Плотность</span>
+              <span class="tool-value" id="density-value">COMFORT</span>
+            </button>
+            <button class="button button-ghost" id="palette-open" type="button">
+              <span data-i18n="toolbar.menu">Меню</span>
+              <kbd aria-hidden="true">Ctrl K</kbd>
+            </button>
+            <button class="icon-button help-open" id="help-open" type="button" data-i18n-aria-label="toolbar.help" aria-label="Горячие клавиши">?</button>
+          </div>
+        </div>
+
         <section class="empty-board" id="empty-board" hidden aria-labelledby="empty-title">
+          <span class="corner corner-tl" aria-hidden="true">+</span>
+          <span class="corner corner-tr" aria-hidden="true">+</span>
+          <span class="corner corner-bl" aria-hidden="true">+</span>
+          <span class="corner corner-br" aria-hidden="true">+</span>
           <span class="eyebrow" data-i18n="empty.eyebrow">Пустая очередь</span>
           <h1 id="empty-title" data-i18n="empty.title">Задачи начинаются здесь</h1>
           <p data-i18n="empty.text">Одна очередь на все проекты. Сессия OpenCode берёт задачу в работу через аренду, а при пересечении файлов договаривается со второй сессией.</p>
           <div class="empty-actions">
             <button class="button button-primary" id="empty-create" type="button">
               <span data-i18n="empty.create">Создать первую</span>
-              <span class="button-icon" aria-hidden="true">
-                <svg class="icon" viewBox="0 0 20 20"><path d="M10 4.5v11M4.5 10h11"></path></svg>
-              </span>
+              <span class="button-glyph" aria-hidden="true">+</span>
             </button>
             <code data-i18n="empty.hint">kanso new "Название" --project Проект</code>
           </div>
+          <p class="empty-keys">
+            <span><kbd>C</kbd> <span data-i18n="empty.key.new">новая задача</span></span>
+            <span><kbd>/</kbd> <span data-i18n="empty.key.search">поиск</span></span>
+            <span><kbd>Ctrl</kbd><kbd>K</kbd> <span data-i18n="empty.key.palette">меню</span></span>
+            <span><kbd>?</kbd> <span data-i18n="empty.key.help">справка</span></span>
+          </p>
         </section>
 
         <main class="board" id="board" aria-label="Канбан-доска"></main>
@@ -96,31 +148,29 @@
     </div>
 
     <p class="visually-hidden" id="live" role="status" aria-live="polite"></p>
-    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden>
+      <span id="toast-text"></span>
+      <button class="toast-action" id="toast-action" type="button" hidden></button>
+      <button class="toast-close" id="toast-close" type="button" data-i18n-aria-label="toast.close" aria-label="Закрыть уведомление">×</button>
+    </div>
 
     <template id="card-template">
       <article class="card" draggable="false">
         <div class="card-inner">
           <div class="card-head">
-            <button class="card-handle" type="button" aria-describedby="reorder-hint">
-              <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
-                <circle cx="7" cy="6" r="1"></circle>
-                <circle cx="13" cy="6" r="1"></circle>
-                <circle cx="7" cy="10" r="1"></circle>
-                <circle cx="13" cy="10" r="1"></circle>
-                <circle cx="7" cy="14" r="1"></circle>
-                <circle cx="13" cy="14" r="1"></circle>
-              </svg>
-            </button>
+            <button class="card-handle" type="button" aria-describedby="reorder-hint">≡</button>
             <span class="card-id"></span>
-            <span class="card-lease" hidden></span>
+            <span class="card-lease" hidden>
+              <span class="lease-square" aria-hidden="true"></span>
+              <span class="lease-time"></span>
+            </span>
           </div>
           <button class="card-title" type="button"></button>
           <div class="card-labels"></div>
           <div class="card-foot">
             <span class="card-project"><span class="project-dot" aria-hidden="true"></span><span class="project-name"></span></span>
             <span class="card-branch" hidden></span>
-            <span class="card-priority"></span>
+            <select class="card-priority"></select>
             <span class="card-owner" hidden><span class="owner-avatar" aria-hidden="true"></span><span class="owner-name"></span></span>
           </div>
         </div>
@@ -136,9 +186,7 @@
             <span class="eyebrow" data-i18n="compose.eyebrow">Новая задача</span>
             <h2 id="compose-title" data-i18n="compose.title">Что нужно сделать</h2>
           </div>
-          <button class="icon-button" type="button" data-close data-i18n-aria-label="compose.close" aria-label="Закрыть">
-            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 5.5 9 9M14.5 5.5l-9 9"></path></svg>
-          </button>
+          <button class="icon-button" type="button" data-close data-i18n-aria-label="compose.close" aria-label="Закрыть">×</button>
         </header>
 
         <label class="field">
@@ -235,9 +283,7 @@
           </button>
           <button class="button button-primary" type="submit" value="create">
             <span data-i18n="compose.submit">Создать</span>
-            <span class="button-icon" aria-hidden="true">
-              <svg class="icon" viewBox="0 0 20 20"><path d="M4 10h11M11 6l4 4-4 4"></path></svg>
-            </span>
+            <span class="button-glyph" aria-hidden="true">→</span>
           </button>
         </footer>
       </form>
@@ -250,9 +296,7 @@
             <span class="drawer-id" id="drawer-id">—</span>
             <span class="drawer-project" id="drawer-project">—</span>
           </div>
-          <button class="icon-button" type="button" data-close data-i18n-aria-label="drawer.close" aria-label="Закрыть">
-            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 5.5 9 9M14.5 5.5l-9 9"></path></svg>
-          </button>
+          <button class="icon-button" type="button" data-close data-i18n-aria-label="drawer.close" aria-label="Закрыть">×</button>
         </header>
 
         <div class="drawer-scroll">
@@ -261,6 +305,20 @@
           <p class="drawer-body" id="drawer-body"></p>
 
           <dl class="meta-grid" id="drawer-meta"></dl>
+
+          <section class="drawer-section drawer-edit">
+            <h3 data-i18n="drawer.edit">Правка</h3>
+            <div class="drawer-edit-row">
+              <label class="field field-inline">
+                <span data-i18n="compose.field.priority">Приоритет</span>
+                <select id="drawer-priority"></select>
+              </label>
+            </div>
+            <div class="field">
+              <span data-i18n="compose.field.labels">Метки</span>
+              <div class="label-picker" id="drawer-label-picker"></div>
+            </div>
+          </section>
 
           <section class="drawer-section" id="drawer-threads-section" hidden>
             <h3 data-i18n="drawer.threads">Переговоры</h3>
@@ -303,14 +361,64 @@
             <span data-i18n="drawer.status">Статус</span>
             <select id="drawer-status"></select>
           </label>
-          <button class="button button-primary" id="drawer-done" type="button">
-            <span data-i18n="drawer.done">Готово</span>
-            <span class="button-icon" aria-hidden="true">
-              <svg class="icon" viewBox="0 0 20 20"><path d="m5 10.5 3.2 3.2L15 6.8"></path></svg>
-            </span>
-          </button>
+          <div class="drawer-foot-actions">
+            <button class="button button-ghost button-danger" id="drawer-cancel" type="button">
+              <span data-i18n="drawer.cancel">Отменить задачу</span>
+            </button>
+            <button class="button button-primary" id="drawer-done" type="button">
+              <span data-i18n="drawer.done">Готово</span>
+              <span class="button-glyph" aria-hidden="true">✓</span>
+            </button>
+          </div>
         </footer>
       </div>
+    </dialog>
+
+    <dialog class="palette" id="palette-dialog" closedby="any" aria-labelledby="palette-title">
+      <h2 id="palette-title" class="visually-hidden" data-i18n="palette.title">Командная палитра</h2>
+      <div class="palette-input">
+        <span class="search-prompt" aria-hidden="true">&gt;</span>
+        <input
+          id="palette-query"
+          type="text"
+          autocomplete="off"
+          spellcheck="false"
+          role="combobox"
+          aria-expanded="true"
+          aria-controls="palette-list"
+          placeholder="Команда, проект или метка…"
+          data-i18n-placeholder="palette.placeholder"
+          data-i18n-aria-label="palette.title"
+        >
+        <kbd aria-hidden="true">ESC</kbd>
+      </div>
+      <ul class="palette-list" id="palette-list" role="listbox" data-i18n-aria-label="palette.listAria" aria-label="Команды"></ul>
+      <p class="palette-empty" id="palette-empty" hidden data-i18n="palette.empty">Ничего не найдено</p>
+      <footer class="palette-foot">
+        <kbd aria-hidden="true">↑</kbd><kbd aria-hidden="true">↓</kbd>
+        <span data-i18n="palette.nav">навигация</span>
+        <kbd aria-hidden="true">ENTER</kbd>
+        <span data-i18n="palette.run">выполнить</span>
+      </footer>
+    </dialog>
+
+    <dialog class="help" id="help-dialog" closedby="any" aria-labelledby="help-title">
+      <header class="dialog-head">
+        <h2 id="help-title" data-i18n="help.title">Горячие клавиши</h2>
+        <button class="icon-button" type="button" data-close data-i18n-aria-label="compose.close" aria-label="Закрыть">×</button>
+      </header>
+      <dl class="help-grid">
+        <div><dt><kbd>Ctrl</kbd><kbd>K</kbd></dt><dd data-i18n="help.palette">Командная палитра</dd></div>
+        <div><dt><kbd>/</kbd></dt><dd data-i18n="help.search">Поиск по задачам</dd></div>
+        <div><dt><kbd>N</kbd> / <kbd>C</kbd></dt><dd data-i18n="help.new">Новая задача</dd></div>
+        <div><dt><kbd>?</kbd></dt><dd data-i18n="help.help">Эта справка</dd></div>
+        <div><dt><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd></dt><dd data-i18n="help.navigate">Фокус по карточкам</dd></div>
+        <div><dt><kbd>Enter</kbd></dt><dd data-i18n="help.open">Открыть задачу</dd></div>
+        <div><dt><kbd>1</kbd>–<kbd>5</kbd></dt><dd data-i18n="help.status">Статус карточки в фокусе</dd></div>
+        <div><dt><kbd>Alt</kbd> + <kbd>↑↓←→</kbd></dt><dd data-i18n="help.move">Перенести карточку</dd></div>
+        <div><dt><kbd>Esc</kbd></dt><dd data-i18n="help.close">Закрыть окно / отменить перенос</dd></div>
+        <div><dt data-i18n="help.dblclickKey">двойной клик</dt><dd data-i18n="help.rename">Переименовать задачу</dd></div>
+      </dl>
     </dialog>
 
     <script type="module" src="/board.js"></script>

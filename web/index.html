@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>Kanso — доска</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/board.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#board">К задачам</a>
+    <div class="atmosphere" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"><span>簡</span></span>
+        <span class="brand-name">Kanso</span>
+        <span class="brand-version" id="version">—</span>
+      </div>
+
+      <div class="topbar-tools">
+        <label class="search" for="search">
+          <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
+            <circle cx="8.75" cy="8.75" r="5.25"></circle>
+            <path d="m12.7 12.7 3.8 3.8"></path>
+          </svg>
+          <input id="search" type="search" placeholder="Поиск по задачам" autocomplete="off" spellcheck="false">
+          <kbd aria-hidden="true">/</kbd>
+        </label>
+
+        <p class="connection" id="connection" role="status" aria-live="polite">
+          <span class="connection-dot" aria-hidden="true"></span>
+          <span id="connection-text">подключение</span>
+        </p>
+
+        <button class="button button-primary" id="new-task" type="button">
+          <span>Новая задача</span>
+          <span class="button-icon" aria-hidden="true">
+            <svg class="icon" viewBox="0 0 20 20"><path d="M10 4.5v11M4.5 10h11"></path></svg>
+          </span>
+        </button>
+      </div>
+    </header>
+
+    <nav class="filters" id="filters" aria-label="Фильтр по проекту"></nav>
+
+    <section class="empty-board" id="empty-board" hidden aria-labelledby="empty-title">
+      <span class="eyebrow">Пустая очередь</span>
+      <h1 id="empty-title">Задачи начинаются здесь</h1>
+      <p>Одна очередь на все проекты. Сессия OpenCode берёт задачу в работу через аренду, а при пересечении файлов договаривается со второй сессией.</p>
+      <div class="empty-actions">
+        <button class="button button-primary" id="empty-create" type="button">
+          <span>Создать первую</span>
+          <span class="button-icon" aria-hidden="true">
+            <svg class="icon" viewBox="0 0 20 20"><path d="M10 4.5v11M4.5 10h11"></path></svg>
+          </span>
+        </button>
+        <code>kanso new "Название" --project Проект</code>
+      </div>
+    </section>
+
+    <main class="board" id="board" aria-label="Канбан-доска"></main>
+
+    <p class="visually-hidden" id="live" role="status" aria-live="polite"></p>
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+    <template id="card-template">
+      <article class="card" draggable="false">
+        <div class="card-inner">
+          <div class="card-head">
+            <button class="card-handle" type="button" aria-describedby="reorder-hint">
+              <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
+                <circle cx="7" cy="6" r="1"></circle>
+                <circle cx="13" cy="6" r="1"></circle>
+                <circle cx="7" cy="10" r="1"></circle>
+                <circle cx="13" cy="10" r="1"></circle>
+                <circle cx="7" cy="14" r="1"></circle>
+                <circle cx="13" cy="14" r="1"></circle>
+              </svg>
+            </button>
+            <span class="card-id"></span>
+            <span class="card-lease" hidden></span>
+          </div>
+          <button class="card-title" type="button"></button>
+          <div class="card-labels"></div>
+          <div class="card-foot">
+            <span class="card-project"><span class="project-dot" aria-hidden="true"></span><span class="project-name"></span></span>
+            <span class="card-priority"></span>
+            <span class="card-owner" hidden><span class="owner-avatar" aria-hidden="true"></span><span class="owner-name"></span></span>
+          </div>
+        </div>
+      </article>
+    </template>
+
+    <p class="visually-hidden" id="reorder-hint">Alt со стрелками перемещает карточку. Вверх и вниз — внутри колонки, влево и вправо — между колонками.</p>
+
+    <dialog class="compose" id="compose-dialog" closedby="any" aria-labelledby="compose-title">
+      <form id="compose-form" method="dialog">
+        <header class="dialog-head">
+          <div>
+            <span class="eyebrow">Новая задача</span>
+            <h2 id="compose-title">Что нужно сделать</h2>
+          </div>
+          <button class="icon-button" type="button" data-close aria-label="Закрыть">
+            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 5.5 9 9M14.5 5.5l-9 9"></path></svg>
+          </button>
+        </header>
+
+        <label class="field">
+          <span>Заголовок</span>
+          <input name="title" required autofocus autocomplete="off" placeholder="Коротко и по делу">
+        </label>
+
+        <div class="field-row">
+          <label class="field">
+            <span>Проект</span>
+            <input name="project" list="projects" value="Inbox" autocomplete="off">
+            <datalist id="projects"></datalist>
+          </label>
+          <label class="field field-narrow">
+            <span>Приоритет</span>
+            <select name="priority">
+              <option value="0">p0 — срочно</option>
+              <option value="1">p1 — высокий</option>
+              <option value="2" selected>p2 — обычный</option>
+              <option value="3">p3 — потом</option>
+            </select>
+          </label>
+        </div>
+
+        <label class="field">
+          <span>Описание <em>необязательно</em></span>
+          <textarea name="body" rows="4" placeholder="Контекст, ссылки, критерии готовности"></textarea>
+        </label>
+
+        <label class="field">
+          <span>Метки <em>через запятую</em></span>
+          <input name="labels" autocomplete="off" placeholder="ui, срочно">
+        </label>
+
+        <footer class="dialog-foot">
+          <button class="button button-ghost" type="button" data-close>Отмена</button>
+          <button class="button button-primary" type="submit" value="create">
+            <span>Создать</span>
+            <span class="button-icon" aria-hidden="true">
+              <svg class="icon" viewBox="0 0 20 20"><path d="M4 10h11M11 6l4 4-4 4"></path></svg>
+            </span>
+          </button>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog class="drawer" id="task-dialog" closedby="any" aria-labelledby="task-dialog-title">
+      <div class="drawer-shell">
+        <header class="drawer-head">
+          <div class="drawer-ident">
+            <span class="drawer-id" id="drawer-id">—</span>
+            <span class="drawer-project" id="drawer-project">—</span>
+          </div>
+          <button class="icon-button" type="button" data-close aria-label="Закрыть">
+            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 5.5 9 9M14.5 5.5l-9 9"></path></svg>
+          </button>
+        </header>
+
+        <div class="drawer-scroll">
+          <h2 id="task-dialog-title">Задача</h2>
+          <div class="drawer-badges" id="drawer-badges"></div>
+          <p class="drawer-body" id="drawer-body"></p>
+
+          <dl class="meta-grid" id="drawer-meta"></dl>
+
+          <section class="drawer-section" id="drawer-threads-section" hidden>
+            <h3>Переговоры</h3>
+            <div class="threads" id="drawer-threads"></div>
+          </section>
+
+          <section class="drawer-section">
+            <h3>Комментарии <span class="section-count" id="comment-count">0</span></h3>
+            <div class="comments" id="drawer-comments"></div>
+            <form class="comment-form" id="comment-form">
+              <label class="field">
+                <span class="visually-hidden">Комментарий</span>
+                <textarea name="body" rows="3" required placeholder="Состояние, решение, следующий шаг"></textarea>
+              </label>
+              <div class="comment-actions">
+                <label class="field field-inline">
+                  <span>Тип</span>
+                  <select name="kind">
+                    <option value="note">Заметка</option>
+                    <option value="handoff">Передача</option>
+                    <option value="decision">Решение</option>
+                  </select>
+                </label>
+                <button class="button button-soft" type="submit">
+                  <span>Добавить</span>
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+
+        <footer class="drawer-foot">
+          <label class="field field-inline">
+            <span>Статус</span>
+            <select id="drawer-status"></select>
+          </label>
+          <button class="button button-primary" id="drawer-done" type="button">
+            <span>Готово</span>
+            <span class="button-icon" aria-hidden="true">
+              <svg class="icon" viewBox="0 0 20 20"><path d="m5 10.5 3.2 3.2L15 6.8"></path></svg>
+            </span>
+          </button>
+        </footer>
+      </div>
+    </dialog>
+
+    <script type="module" src="/board.js"></script>
+  </body>
+</html>

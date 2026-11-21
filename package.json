@@ -8,7 +8,7 @@
     "kanso": "./bin/kanso.js"
   },
   "scripts": {
-    "test": "node --test test/",
+    "test": "node --test",
     "start": "node bin/kanso.js serve"
   },
   "engines": {

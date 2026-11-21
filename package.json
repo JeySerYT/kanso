@@ -1,0 +1,17 @@
+{
+  "name": "kanso",
+  "version": "0.1.0-alpha.1",
+  "private": true,
+  "type": "module",
+  "description": "Local kanban board with task leases for OpenCode sessions",
+  "bin": {
+    "kanso": "./bin/kanso.js"
+  },
+  "scripts": {
+    "test": "node --test test/",
+    "start": "node bin/kanso.js serve"
+  },
+  "engines": {
+    "node": ">=22.5"
+  }
+}

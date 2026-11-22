@@ -105,6 +105,12 @@
     padding: 12px;
   }
 
+  .loading-board {
+    grid-auto-columns: min(84vw, 320px);
+    gap: 10px;
+    padding: 12px;
+  }
+
   .column + .column {
     border-left: 1px solid var(--line);
   }

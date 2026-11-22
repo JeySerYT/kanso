@@ -248,6 +248,11 @@
   "error.label_too_long": "Название метки длиннее 32 символов",
   "error.server_error": "Ошибка сервера",
   "error.unknown": "Ошибка: {code}",
+  "error.boardEyebrow": "Нет связи",
+  "error.boardTitle": "Доска не отвечает",
+  "error.boardText": "Сервер Kanso не ответил. Проверьте, что он запущен, и повторите.",
+  "error.retry": "Повторить",
+  "error.boardHint": "node bin/kanso.js serve",
 
   "cli.usage": "kanso <list|new|get|claim|touch|move|comment|release|done|delete|threads|reply|whoami|serve>",
   "cli.help": "kanso — локальная доска задач. Один SQLite, без облака.\n\n  kanso list [--project P] [--status S]        задачи\n  kanso next [--project P] [--paths a,b]       взять верхнюю задачу из todo\n  kanso new \"заголовок\" [--status todo] [--project P] [--branch B]\n             [--priority 0..4] [--label a,b] [--blocked-by ID] [--body \"…\"]\n  kanso get ANI-4                              карточка, тело, блокировки\n  kanso claim ANI-4 --paths src/a.js           взять в работу и забронировать файлы\n  kanso touch ANI-4 src/b.js                   добавить файлы в аренду\n  kanso move ANI-4 review                      сменить статус\n  kanso comment ANI-4 \"текст\"                  комментарий\n  kanso done ANI-4 --note \"итог\"               закрыть\n  kanso release ANI-4 --note \"состояние\"       освободить без закрытия\n  kanso whoami                                 сессия и что она держит\n  kanso threads                                переговоры о конфликте\n  kanso reply THR-1 take-now|wait|split|escalate [текст]\n  kanso delete ANI-4 --yes                     удалить навсегда\n  kanso serve [--port 7777] [--host 0.0.0.0] [--db путь] [--roots a,b]\n\nЦикл: list → new --status todo → next (или claim) → touch → comment → move review → done.\nСтатусы: backlog → todo → in_progress → review → done, плюс canceled.\nПодробнее о команде: kanso help <команда>.",

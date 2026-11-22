@@ -248,6 +248,11 @@
   "error.label_too_long": "The label name is longer than 32 characters",
   "error.server_error": "Server error",
   "error.unknown": "Error: {code}",
+  "error.boardEyebrow": "No connection",
+  "error.boardTitle": "The board is not responding",
+  "error.boardText": "The Kanso server did not answer. Check that it is running, then retry.",
+  "error.retry": "Retry",
+  "error.boardHint": "node bin/kanso.js serve",
 
   "cli.usage": "kanso <list|new|get|claim|touch|move|comment|release|done|delete|threads|reply|whoami|serve>",
   "cli.help": "kanso — a local task board. One SQLite file, no cloud.\n\n  kanso list [--project P] [--status S]        tasks\n  kanso next [--project P] [--paths a,b]       claim the top task from todo\n  kanso new \"title\" [--status todo] [--project P] [--branch B]\n             [--priority 0..4] [--label a,b] [--blocked-by ID] [--body \"…\"]\n  kanso get ANI-4                              card, body, blockers\n  kanso claim ANI-4 --paths src/a.js           take it and reserve files\n  kanso touch ANI-4 src/b.js                   add more files to the lease\n  kanso move ANI-4 review                      change status\n  kanso comment ANI-4 \"text\"                   comment\n  kanso done ANI-4 --note \"result\"             close it\n  kanso release ANI-4 --note \"state\"           release without closing\n  kanso whoami                                 session and what it holds\n  kanso threads                                conflict negotiations\n  kanso reply THR-1 take-now|wait|split|escalate [text]\n  kanso delete ANI-4 --yes                     delete permanently\n  kanso serve [--port 7777] [--host 0.0.0.0] [--db path] [--roots a,b]\n\nCycle: list → new --status todo → next (or claim) → touch → comment → move review → done.\nStatuses: backlog → todo → in_progress → review → done, plus canceled.\nPer-command help: kanso help <command>.",

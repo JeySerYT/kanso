@@ -19,6 +19,7 @@ import {
   drawerStatus,
   drawerTitle,
   emptyCreate,
+  errorRetry,
   effectsToggle,
   filterLabel,
   filterLeased,
@@ -133,6 +134,12 @@ searchClear.addEventListener('click', () => {
 
 newTask.addEventListener('click', () => openCompose())
 emptyCreate.addEventListener('click', () => openCompose())
+
+// «Повторить» после сбоя загрузки: панель скроется, пока идёт запрос,
+// и вернётся, если сервер снова не ответил.
+errorRetry.addEventListener('click', () => {
+  void loadBoard()
+})
 
 filterLabel.addEventListener('change', () => {
   state.label = filterLabel.value

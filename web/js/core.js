@@ -9,6 +9,9 @@ export const statusLabel = (id) => t(`status.${id}`)
 export const priorityTitle = (priority) => t(`priority.title.p${priority}`)
 
 export const board = document.querySelector('#board')
+export const loadingBoard = document.querySelector('#loading-board')
+export const errorBoard = document.querySelector('#error-board')
+export const errorRetry = document.querySelector('#error-retry')
 export const filters = document.querySelector('#filters')
 export const projectsSection = document.querySelector('#projects-section')
 export const emptyBoard = document.querySelector('#empty-board')
@@ -89,6 +92,8 @@ export const state = {
   projects: [],
   revision: 0,
   version: '',
+  loading: true,
+  loadError: false,
   query: '',
   project: 'all',
   label: '',

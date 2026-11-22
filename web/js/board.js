@@ -10,12 +10,14 @@ import {
   composeDialog,
   el,
   emptyBoard,
+  errorBoard,
   errorText,
   graphView,
   hueOf,
   labelColor,
   leaseCountdown,
   leaseLabel,
+  loadingBoard,
   markLocal,
   option,
   priorityTitle,
@@ -42,8 +44,28 @@ import { renderGraph } from './graph.js'
 
 const columns = new Map()
 let lastErrorAt = 0
+let skeletonBuilt = false
+
+// Скелетон повторяет сетку колонок, чтобы при медленном ответе не было
+// пустого экрана и скачка раскладки. Текст не нужен: это только форма.
+function buildSkeleton() {
+  if (skeletonBuilt) return
+  skeletonBuilt = true
+  const column = () => {
+    const node = el('div', 'skeleton-column')
+    node.append(el('div', 'skeleton-head'))
+    for (let index = 0; index < 3; index += 1) node.append(el('div', 'skeleton-card'))
+    return node
+  }
+  loadingBoard.replaceChildren(...Array.from({ length: STATUS_IDS.length }, column))
+}
 
 export async function loadBoard() {
+  // Скелетон только на первой загрузке: фоновое обновление не должно мигать.
+  if (!state.tasks.length) {
+    state.loading = true
+    render()
+  }
   try {
     const data = await api('/api/board')
     state.tasks = data.tasks
@@ -52,16 +74,24 @@ export async function loadBoard() {
     state.labels = data.labels ?? []
     state.revision = Math.max(state.revision, data.revision)
     state.version = data.version
+    state.loading = false
+    state.loadError = false
     setConnection(true)
     render()
     if (composeDialog.open) renderLabelPicker()
     syncOpenDialogs()
   } catch {
-    if (Date.now() - lastErrorAt > 5000) {
+    state.loading = false
+    const firstFailure = !state.loadError && !state.tasks.length
+    state.loadError = true
+    setConnection(false)
+    render()
+    // Панель ошибки уже всё объясняет; тост нужен только если на экране
+    // остались старые данные и непонятно, почему они не обновляются.
+    if (!firstFailure && state.tasks.length && Date.now() - lastErrorAt > 5000) {
       lastErrorAt = Date.now()
       showToast(t('toast.boardDown'), { error: true })
     }
-    setConnection(false)
   }
 }
 
@@ -81,19 +111,27 @@ export function render() {
     : t('app.title')
   if (search.value !== state.query) search.value = state.query
 
-  const empty = state.tasks.length === 0
+  const loading = state.loading && state.tasks.length === 0
+  const failed = state.loadError && state.tasks.length === 0
+  const empty = state.tasks.length === 0 && !loading && !failed
   const graph = state.view === 'graph'
+  const unavailable = empty || loading || failed
+
+  loadingBoard.hidden = !loading
+  if (loading) buildSkeleton()
+  errorBoard.hidden = !failed
   emptyBoard.hidden = !empty
-  board.hidden = empty || graph
-  graphView.hidden = empty || !graph
-  viewBoard.disabled = empty
-  viewGraph.disabled = empty
-  projectsSection.hidden = empty
-  toolbar.hidden = empty
+  board.hidden = unavailable || graph
+  graphView.hidden = unavailable || !graph
+  board.setAttribute('aria-busy', String(loading))
+  viewBoard.disabled = unavailable
+  viewGraph.disabled = unavailable
+  projectsSection.hidden = unavailable
+  toolbar.hidden = unavailable
 
   renderFilters()
   renderToolbar()
-  if (!empty && !graph) renderColumns()
+  if (!unavailable && !graph) renderColumns()
   renderGraph()
 }
 

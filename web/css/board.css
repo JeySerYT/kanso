@@ -669,3 +669,70 @@ body.density-compact .column-head {
   gap: 6px;
 }
 
+
+/* ---------- Загрузка и сбой ---------- */
+
+.loading-board {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 300px;
+  overflow: hidden;
+}
+
+.skeleton-column {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-left: none;
+  background: var(--surface-0);
+}
+
+.skeleton-column:first-child {
+  border-left: 1px solid var(--line);
+}
+
+.skeleton-head {
+  height: 36px;
+  margin-bottom: 6px;
+  border: 1px solid var(--line);
+  background: var(--surface-1);
+}
+
+.skeleton-card {
+  height: 88px;
+  border: 1px solid var(--line);
+  background: var(--surface-1);
+}
+
+.skeleton-head,
+.skeleton-card {
+  animation: skeleton-pulse 1.4s var(--ease) infinite;
+}
+
+.skeleton-card:nth-child(3) {
+  animation-delay: 120ms;
+}
+
+.skeleton-card:nth-child(4) {
+  animation-delay: 240ms;
+}
+
+@keyframes skeleton-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.error-board {
+  border-color: var(--accent);
+}
+
+.error-board .eyebrow {
+  border-color: var(--accent);
+  color: var(--accent);
+}

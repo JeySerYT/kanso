@@ -188,6 +188,20 @@
 
         <main class="board" id="board" aria-label="Канбан-доска"></main>
 
+        <section class="loading-board" id="loading-board" hidden aria-hidden="true"></section>
+
+        <section class="empty-board error-board" id="error-board" hidden aria-labelledby="error-title">
+          <span class="eyebrow" data-i18n="error.boardEyebrow">Нет связи</span>
+          <h1 id="error-title" data-i18n="error.boardTitle">Доска не отвечает</h1>
+          <p data-i18n="error.boardText">Сервер Kanso не ответил. Проверьте, что он запущен, и повторите.</p>
+          <div class="empty-actions">
+            <button class="button button-primary" id="error-retry" type="button">
+              <span data-i18n="error.retry">Повторить</span>
+            </button>
+            <code data-i18n="error.boardHint">node bin/kanso.js serve</code>
+          </div>
+        </section>
+
         <section class="graph" id="graph" hidden aria-labelledby="graph-title">
           <h2 class="visually-hidden" id="graph-title" data-i18n="graph.title">Граф задач</h2>
           <canvas class="graph-canvas" id="graph-canvas" role="application" tabindex="0" aria-label="Граф задач" aria-describedby="graph-keys" data-i18n-aria-label="graph.title"></canvas>

@@ -182,6 +182,7 @@ let toastTimer = 0
 export const hideToast = () => {
   window.clearTimeout(toastTimer)
   toastEl.hidden = true
+  toastEl.classList.remove('toast-inline')
   toastAction.hidden = true
   toastAction.onclick = null
 }
@@ -193,6 +194,20 @@ const dismissToast = () => {
     return
   }
   hideToast()
+}
+
+// Модальный диалог делает всё снаружи инертным, поэтому обычный тост под
+// drawer не виден. Внутри диалога ставим его над футером: виден и не
+// перекрывает кнопки. Вне диалогов тост возвращается в body.
+const mountToast = () => {
+  const footer = taskDialog.open
+    ? taskDialog.querySelector('.drawer-foot')
+    : composeDialog.open
+      ? composeDialog.querySelector('.dialog-foot')
+      : null
+  if (footer) footer.before(toastEl)
+  else if (toastEl.parentElement !== document.body) document.body.append(toastEl)
+  toastEl.classList.toggle('toast-inline', Boolean(footer))
 }
 
 export const showToast = (text, { error = false, action = null } = {}) => {
@@ -210,6 +225,7 @@ export const showToast = (text, { error = false, action = null } = {}) => {
     toastAction.hidden = true
     toastAction.onclick = null
   }
+  mountToast()
   toastEl.hidden = false
   toastTimer = window.setTimeout(dismissToast, action ? 6500 : 4200)
 }

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Kanso">
+  <rect width="32" height="32" fill="#0a0a0a"/>
+  <rect x="0.5" y="0.5" width="31" height="31" fill="none" stroke="#3a3a3a"/>
+  <rect x="6" y="8" width="5" height="16" fill="#ff2a2a"/>
+  <rect x="13.5" y="13" width="5" height="11" fill="#ff2a2a"/>
+  <rect x="21" y="10" width="5" height="14" fill="#ff2a2a"/>
+</svg>

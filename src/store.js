@@ -132,8 +132,10 @@ export function openStore(path) {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true })
 
   const db = new DatabaseSync(path)
-  db.exec('PRAGMA journal_mode = WAL')
+  // busy_timeout до journal_mode: иначе параллельный старт двух процессов
+  // (например, TUI-плагин и LAN-listener) падает с «database is locked».
   db.exec('PRAGMA busy_timeout = 5000')
+  db.exec('PRAGMA journal_mode = WAL')
   db.exec('PRAGMA foreign_keys = ON')
   db.exec(SCHEMA)
 

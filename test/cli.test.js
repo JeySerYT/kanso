@@ -63,3 +63,68 @@ test('delete чужой арендованной задачи отказывае
   assert.ok(store.getTask('ANI-1'))
   store.close()
 })
+test('--help печатает цикл и команды без обращения к базе', async () => {
+  const { code, text } = await capture(['--help'])
+
+  assert.equal(code, 0)
+  assert.ok(text.includes('kanso next'))
+  assert.ok(text.includes('Цикл:'))
+})
+
+test('new --status todo кладёт задачу сразу в очередь', async (t) => {
+  const db = tempDb(t)
+
+  const { text } = await capture(['new', 'В очередь', '--project', 'AniVella', '--status', 'todo', '--db', db])
+
+  assert.ok(text.includes('ANI-1'))
+  const store = openStore(db)
+  assert.equal(store.getTask('ANI-1').status, 'todo')
+  store.close()
+})
+
+test('new --status done отклоняет недопустимый статус и ничего не создаёт', async (t) => {
+  const db = tempDb(t)
+
+  await assert.rejects(run(['new', 'Нельзя', '--status', 'done', '--db', db], { out: () => {} }), /использование/)
+
+  const store = openStore(db)
+  assert.equal(store.listTasks().length, 0)
+  store.close()
+})
+
+test('next берёт задачу с лучшим приоритетом и переводит в работу', async (t) => {
+  const db = tempDb(t)
+  await run(['new', 'Обычная', '--project', 'AniVella', '--priority', '2', '--status', 'todo', '--db', db], { out: () => {} })
+  await run(['new', 'Срочная', '--project', 'AniVella', '--priority', '0', '--status', 'todo', '--db', db], { out: () => {} })
+
+  const { text } = await capture(['next', '--session', 'ses_test', '--paths', 'src/a.js', '--db', db])
+
+  assert.ok(text.includes('ANI-2'))
+  const store = openStore(db)
+  const task = store.getTask('ANI-2')
+  assert.equal(task.status, 'in_progress')
+  assert.equal(task.claim.session, 'ses_test')
+  assert.deepEqual(task.claim.touched_paths, ['src/a.js'])
+  store.close()
+})
+
+test('next пропускает заблокированную задачу и называет её', async (t) => {
+  const db = tempDb(t)
+  await run(['new', 'Сначала', '--project', 'AniVella', '--priority', '2', '--status', 'todo', '--db', db], { out: () => {} })
+  await run(['new', 'Потом', '--project', 'AniVella', '--priority', '0', '--status', 'todo', '--blocked-by', 'ANI-1', '--db', db], { out: () => {} })
+
+  const first = await capture(['next', '--session', 'ses_test', '--db', db])
+  assert.ok(first.text.includes('ANI-1'))
+
+  const second = await capture(['next', '--session', 'ses_test', '--db', db])
+  assert.ok(second.text.includes('ANI-2'))
+  assert.ok(/заблокирован/.test(second.text))
+})
+
+test('next на пустом todo подсказывает, как создать задачу', async (t) => {
+  const db = tempDb(t)
+
+  const { text } = await capture(['next', '--db', db])
+
+  assert.ok(text.includes('--status todo'))
+})

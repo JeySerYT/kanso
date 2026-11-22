@@ -250,8 +250,16 @@
   "error.unknown": "Ошибка: {code}",
 
   "cli.usage": "kanso <list|new|get|claim|touch|move|comment|release|done|delete|threads|reply|whoami|serve>",
+  "cli.help": "kanso — локальная доска задач. Один SQLite, без облака.\n\n  kanso list [--project P] [--status S]        задачи\n  kanso next [--project P] [--paths a,b]       взять верхнюю задачу из todo\n  kanso new \"заголовок\" [--status todo] [--project P] [--branch B]\n             [--priority 0..4] [--label a,b] [--blocked-by ID] [--body \"…\"]\n  kanso get ANI-4                              карточка, тело, блокировки\n  kanso claim ANI-4 --paths src/a.js           взять в работу и забронировать файлы\n  kanso touch ANI-4 src/b.js                   добавить файлы в аренду\n  kanso move ANI-4 review                      сменить статус\n  kanso comment ANI-4 \"текст\"                  комментарий\n  kanso done ANI-4 --note \"итог\"               закрыть\n  kanso release ANI-4 --note \"состояние\"       освободить без закрытия\n  kanso whoami                                 сессия и что она держит\n  kanso threads                                переговоры о конфликте\n  kanso reply THR-1 take-now|wait|split|escalate [текст]\n  kanso delete ANI-4 --yes                     удалить навсегда\n  kanso serve [--port 7777] [--host 0.0.0.0] [--db путь] [--roots a,b]\n\nЦикл: list → new --status todo → next (или claim) → touch → comment → move review → done.\nСтатусы: backlog → todo → in_progress → review → done, плюс canceled.\nПодробнее о команде: kanso help <команда>.",
+  "cli.usage.next": "использование: kanso next [--project P] [--paths a,b]",
+  "cli.usage.list": "использование: kanso list [--project P] [--status S]",
+  "cli.usage.whoami": "использование: kanso whoami",
+  "cli.usage.threads": "использование: kanso threads [--state S]",
+  "cli.usage.serve": "использование: kanso serve [--port 7777] [--host 0.0.0.0] [--db путь] [--roots a,b]",
+  "cli.nextEmpty": "в todo пусто: создайте задачу с kanso new --status todo",
+  "cli.nextBlocked": "все задачи todo заблокированы: {ids}",
   "cli.unknownCommand": "неизвестная команда: {name}",
-  "cli.usage.new": "использование: kanso new \"заголовок\" [--project P] [--branch B]",
+  "cli.usage.new": "использование: kanso new \"заголовок\" [--status todo] [--project P] [--branch B]",
   "cli.usage.get": "использование: kanso get ANI-1",
   "cli.usage.claim": "использование: kanso claim ANI-1 [--paths a,b]",
   "cli.usage.touch": "использование: kanso touch ANI-1 src/app.js src/ui.js",
@@ -292,7 +300,7 @@
   "cli.pathsLine": "файлы {paths}",
   "cli.blockedBy": "заблокирована {ids}",
   "cli.thread": "тред {line}",
-  "cli.serve": "доска Kanso на http://127.0.0.1:{port}",
+  "cli.serve": "доска Kanso на http://{host}:{port}",
 
   "server.deadlock": "Kanso: тред {thread} по пути {path} в тупике. Спросите человека и запишите решение: kanso comment {task} \"...\"",
   "server.conflict": "Kanso: путь {path} пересекается с {task} ({session}). Ответьте: kanso reply {thread} take-now|wait|split|escalate"

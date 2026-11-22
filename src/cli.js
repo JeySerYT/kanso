@@ -87,6 +87,10 @@ const commands = {
   new(flags, positional) {
     const title = positional.join(' ').trim()
     if (!title) throw new Error(t('cli.usage.new'))
+    const status = typeof flags.status === 'string' ? flags.status : 'backlog'
+    // Новую задачу кладём только в backlog или todo: in_progress подразумевает
+    // аренду через claim, а done/canceled для создания бессмысленны.
+    if (status !== 'backlog' && status !== 'todo') throw new Error(t('cli.usage.new'))
     return withStore(flags, (store) => {
       const task = store.createTask({
         title,
@@ -97,7 +101,31 @@ const commands = {
         labels: splitList(flags.label),
         blocked_by: splitList(flags['blocked-by']),
       })
+      if (status === 'todo') {
+        store.moveTask(task.id, { status, session: identity(flags).session })
+      }
       return t('cli.created', { id: task.id, title: task.title })
+    })
+  },
+
+  next(flags) {
+    const who = identity(flags)
+    return withStore(flags, (store) => {
+      const candidates = store
+        .listTasks({ status: 'todo', project: flags.project })
+        .sort((a, b) => a.priority - b.priority || a.position - b.position)
+      if (!candidates.length) return t('cli.nextEmpty')
+      const blocked = []
+      for (const task of candidates) {
+        const result = store.claimTask(task.id, { ...who, paths: splitList(flags.paths) })
+        if (result.ok) {
+          store.touchSession({ id: who.session, cwd: who.cwd })
+          return t('cli.claimed', { id: task.id, title: task.title })
+        }
+        if (result.code === 'blocked') blocked.push(task.id)
+        // locked: задачу уже держит другая сессия, closed: успели закрыть.
+      }
+      return blocked.length ? t('cli.nextBlocked', { ids: blocked.join(', ') }) : t('cli.nextEmpty')
     })
   },
 
@@ -282,8 +310,21 @@ const commands = {
 
 const run = async (argv, { out = console.log } = {}) => {
   const [name, ...rest] = argv
-  if (!name || name === 'help' || name === '--help') {
-    out(t('cli.usage'))
+  if (!name || name === 'help' || name === '--help' || name === '-h') {
+    // kanso help <команда> печатает только её строку использования.
+    if (name === 'help' && rest[0]) {
+      const key = `cli.usage.${rest[0]}`
+      const usage = t(key)
+      out(usage === key ? t('cli.help') : usage)
+      return 0
+    }
+    out(t('cli.help'))
+    return 0
+  }
+  if (rest.includes('--help') || rest.includes('-h')) {
+    const key = `cli.usage.${name}`
+    const usage = t(key)
+    out(usage === key ? t('cli.help') : usage)
     return 0
   }
   if (name === 'serve') {
@@ -295,10 +336,11 @@ const run = async (argv, { out = console.log } = {}) => {
       : undefined
     const handle = await startServer({
       port,
+      host: typeof flags.host === 'string' ? flags.host : process.env.KANSO_HOST,
       roots,
       dbPath: flags.db || process.env.KANSO_DB || DEFAULT_DB,
     })
-    out(t('cli.serve', { port: handle.port }))
+    out(t('cli.serve', { host: handle.host, port: handle.port }))
     return 0
   }
   const handler = commands[name]

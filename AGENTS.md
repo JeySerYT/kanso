@@ -20,8 +20,8 @@
 ```sh
 npm test                      # весь набор
 node --test test/store.test.js   # один файл
+node bin/kanso.js --help      # команды, флаги и цикл статусов
 node bin/kanso.js serve       # доска, по умолчанию :7777
-node bin/kanso.js mcp         # MCP-сервер (stdio)
 node bin/kanso.js list        # список задач
 ```
 
@@ -39,6 +39,14 @@ node bin/kanso.js list        # список задач
 | `src/i18n.js` — `translator()` | выбор языка, интерполяция, fallback | вёрстку |
 
 UI проверяется руками в браузере: колонки, drag&drop, drawer, сайдбар, мобильная раскладка.
+
+## Работа агента с доской
+
+- Статусы, аренда, комментарии и закрытие задач — только командами `bin/kanso.js`. Клики по доске и Playwright для этого не используются.
+- Перед правками: `claim <ID> --paths ...`; после проверки: `done <ID> --note "..."`. Аренда живёт 15 минут и продлевается `touch`, `comment`, `move`.
+- Задачу в очередь кладёт `new --status todo`, взять верхнюю — `next`. `in_progress` ставится только `claim`/`next`.
+- Браузер (Playwright, Chrome DevTools) — только визуальная проверка интерфейса, всегда headless.
+- MCP для доски не подключается: общий процесс не различает сессии, и аренда уезжает в `local`. Интерфейс агента — CLI.
 
 ## Локализация
 

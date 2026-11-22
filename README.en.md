@@ -1,3 +1,5 @@
+<img src="assets/logo.svg" width="88" height="88" alt="">
+
 # Kanso
 
 [![CI](https://github.com/JeySerYT/kanso/actions/workflows/ci.yml/badge.svg)](https://github.com/JeySerYT/kanso/actions/workflows/ci.yml)
@@ -21,6 +23,7 @@ The name comes from 簡素 (*kanso*, "simplicity"): short, typed with one hand, 
 - [Localization](#localization)
 - [Configuration](#configuration)
 - [Development](#development)
+- [Contributing](#contributing)
 - [License](#license)
 
 ## Why
@@ -146,6 +149,12 @@ docs/       specification and design notes
 ```
 
 `VERSION` is the single source of truth for the version. `package.json` must match it, and a test enforces that. The format is `X.Y.Z` plus the `alpha` / `beta` / `release` stage.
+
+## Contributing
+
+Build and pull request rules live in [CONTRIBUTING.md](CONTRIBUTING.md). Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md), not through Issues. Discussions follow the [code of conduct](CODE_OF_CONDUCT.md).
+
+Development runs through the board itself: `kanso serve`, `kanso next --paths ...`, `kanso done <id> --note "..."`.
 
 ## License
 

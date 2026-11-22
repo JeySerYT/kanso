@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Установка и команды
+    url: https://github.com/JeySerYT/kanso#%D0%B1%D1%8B%D1%81%D1%82%D1%80%D1%8B%D0%B9-%D1%81%D1%82%D0%B0%D1%80%D1%82
+    about: Как запустить доску и вызывать CLI
+  - name: Релизы и изменения
+    url: https://github.com/JeySerYT/kanso/releases
+    about: Что вошло в каждую версию
+  - name: Уязвимость
+    url: https://github.com/JeySerYT/kanso/security/advisories/new
+    about: Приватный отчёт вместо публичного Issue

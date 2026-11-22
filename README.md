@@ -1,3 +1,5 @@
+<img src="assets/logo.svg" width="88" height="88" alt="">
+
 # Kanso
 
 [![CI](https://github.com/JeySerYT/kanso/actions/workflows/ci.yml/badge.svg)](https://github.com/JeySerYT/kanso/actions/workflows/ci.yml)
@@ -21,6 +23,7 @@
 - [Локализация](#локализация)
 - [Конфигурация](#конфигурация)
 - [Разработка](#разработка)
+- [Участие](#участие)
 - [Лицензия](#лицензия)
 
 ## Зачем
@@ -146,6 +149,12 @@ docs/       спецификация и заметки по дизайну
 ```
 
 `VERSION` — источник истины для версии. `package.json` обязан совпадать, это проверяет тест. Формат — `X.Y.Z` плюс стадия `alpha` / `beta` / `release`.
+
+## Участие
+
+Правила сборки и пул-реквестов — в [CONTRIBUTING.md](CONTRIBUTING.md). Об уязвимостях сообщайте приватно, как описано в [SECURITY.md](SECURITY.md), а не через Issues. Поведение в обсуждениях регулирует [кодекс поведения](CODE_OF_CONDUCT.md).
+
+Разработка идёт через саму доску: `kanso serve`, `kanso next --paths ...`, `kanso done <id> --note "..."`.
 
 ## Лицензия
 

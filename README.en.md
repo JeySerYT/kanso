@@ -30,8 +30,10 @@ Session identity comes from `OPENCODE_SESSION_ID`, which OpenCode sets for every
 In the examples, `kanso` means `node bin/kanso.js`. You can add an alias or run `npm link`.
 
 ```sh
+kanso --help                                commands, flags and the status cycle
 kanso list [--project P] [--status S]       queue
-kanso new "title" [--project P] [--branch B] [--label a,b] [--priority 0..4] [--body "..."]
+kanso next [--project P] [--paths a,b]      claim the top task from todo
+kanso new "title" [--project P] [--branch B] [--label a,b] [--priority 0..4] [--status todo] [--body "..."]
 kanso get ANI-1                             task, owner, threads
 kanso claim ANI-1 [--paths src/a.js,b]      claim with file reservation
 kanso touch ANI-1 src/a.js src/b.js         declare files
@@ -43,10 +45,10 @@ kanso delete ANI-1 --yes                    delete permanently (refuses without 
 kanso threads [--state asked]               negotiation threads
 kanso reply THR-1 take-now|wait|split|escalate [text]
 kanso whoami                                session, cwd, current task
-kanso serve [--port 7777] [--db path] [--roots a,b]   board
+kanso serve [--port 7777] [--host 0.0.0.0] [--db path] [--roots a,b]   board
 ```
 
-Commands print short text for the agent: what happened, who owns the task, what to do next. Errors are a line with a code (`locked`, `blocked`, `path_locked`, `needs_agreement`), not a stack trace.
+Commands print short text for the agent: what happened, who owns the task, what to do next. Errors are a line with a code (`locked`, `blocked`, `path_locked`, `needs_agreement`), not a stack trace. Per-command help: `kanso help <command>` or `kanso <command> --help`.
 
 ## Coordination
 

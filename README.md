@@ -30,8 +30,10 @@ node bin/kanso.js new "Заголовок" --project AniVella --branch main
 В примерах `kanso` — это `node bin/kanso.js`. Можно сделать alias или `npm link`.
 
 ```sh
+kanso --help                                команды, флаги и цикл статусов
 kanso list [--project P] [--status S]       очередь
-kanso new "title" [--project P] [--branch B] [--label a,b] [--priority 0..4] [--body "..."]
+kanso next [--project P] [--paths a,b]      взять верхнюю задачу из todo
+kanso new "title" [--project P] [--branch B] [--label a,b] [--priority 0..4] [--status todo] [--body "..."]
 kanso get ANI-1                             карточка, владелец, треды
 kanso claim ANI-1 [--paths src/a.js,b]      захват с бронью файлов
 kanso touch ANI-1 src/a.js src/b.js         объявить файлы
@@ -43,10 +45,10 @@ kanso delete ANI-1 --yes                    удалить навсегда (б�
 kanso threads [--state asked]               треды переговоров
 kanso reply THR-1 take-now|wait|split|escalate [text]
 kanso whoami                                сессия, cwd, текущая задача
-kanso serve [--port 7777] [--db path] [--roots a,b]   доска
+kanso serve [--port 7777] [--host 0.0.0.0] [--db path] [--roots a,b]   доска
 ```
 
-Команды печатают короткий текст для агента: что произошло, кто владелец, что делать дальше. Ошибка — строка с кодом (`locked`, `blocked`, `path_locked`, `needs_agreement`), а не стектрейс.
+Команды печатают короткий текст для агента: что произошло, кто владелец, что делать дальше. Ошибка — строка с кодом (`locked`, `blocked`, `path_locked`, `needs_agreement`), а не стектрейс. Справка по команде — `kanso help <команда>` или `kanso <команда> --help`.
 
 ## Координация
 

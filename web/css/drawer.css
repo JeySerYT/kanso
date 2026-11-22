@@ -1,0 +1,471 @@
+/* ---------- Drawer ---------- */
+
+.drawer {
+  width: min(560px, 100vw);
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0 0 0 auto;
+  padding: 0;
+  border: none;
+  border-left: 1px solid var(--line-strong);
+  background: var(--surface-0);
+}
+
+.drawer[open] {
+  animation: slide-in 240ms var(--ease) both;
+}
+
+.drawer-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.drawer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.drawer-ident {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.drawer-id {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+}
+
+.drawer-project {
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+.drawer-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 22px 26px;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.drawer-scroll h2 {
+  margin: 0 0 12px;
+  font-size: clamp(20px, 3.4vw, 26px);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+
+.drawer-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.badge {
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  color: var(--text-3);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.badge[data-kind="priority-0"] {
+  color: var(--accent);
+  border-color: rgba(255, 42, 42, 0.4);
+}
+.badge[data-kind="priority-1"] {
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+.badge[data-kind="priority-2"] {
+  color: var(--text-3);
+}
+.badge[data-kind="priority-3"] {
+  color: var(--faint);
+}
+.badge[data-kind="priority-4"] {
+  color: var(--faint);
+}
+
+.badge-branch {
+  font-size: 9.5px;
+  text-transform: none;
+}
+
+.badge-label {
+  border-color: color-mix(in srgb, var(--label-color, #9a9a9a) 40%, transparent);
+  background: color-mix(in srgb, var(--label-color, #9a9a9a) 12%, transparent);
+  color: color-mix(in srgb, var(--label-color, #9a9a9a) 85%, white);
+  text-transform: none;
+}
+
+.badge-lease {
+  color: var(--phosphor);
+  border-color: rgba(74, 246, 38, 0.35);
+}
+
+.badge-lease.is-stale {
+  color: var(--accent);
+  border-color: rgba(255, 42, 42, 0.4);
+  background: var(--hazard);
+}
+
+.drawer-body {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.drawer-body:empty {
+  display: none;
+}
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 20px 0 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  background: var(--line);
+}
+
+.meta-grid div {
+  min-width: 0;
+  padding: 10px 12px;
+  background: var(--surface-0);
+}
+
+.meta-grid dt {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.meta-grid dd {
+  margin: 3px 0 0;
+  color: var(--text-2);
+  font-size: 11.5px;
+  overflow-wrap: anywhere;
+}
+
+.meta-grid dd.mono {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.meta-grid dd.lease-live {
+  color: var(--phosphor);
+}
+
+.meta-grid dd.lease-stale {
+  color: var(--accent);
+}
+
+.drawer-section {
+  margin-top: 24px;
+}
+
+.drawer-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.section-count {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0;
+  color: var(--faint);
+  padding: 0 5px;
+  border: 1px solid var(--line);
+}
+
+.drawer-edit-row {
+  margin-bottom: 12px;
+}
+
+.drawer-edit .label-picker {
+  min-height: 0;
+}
+
+.comments {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.comment {
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  background: var(--well);
+}
+
+.comment-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 4px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--faint);
+}
+
+.comment-kind {
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 8.5px;
+}
+
+.comment-body {
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.comment-empty {
+  color: var(--faint);
+  font-size: 11.5px;
+}
+
+.comment-form {
+  margin-top: 10px;
+}
+
+.comment-form .field {
+  margin-bottom: 8px;
+}
+
+.comment-actions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.threads {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.thread {
+  padding: 10px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-1);
+}
+
+.thread[data-state="needs_decision"] {
+  border-color: rgba(255, 42, 42, 0.5);
+  background: rgba(255, 42, 42, 0.05);
+}
+
+.thread[data-state="agreed"] {
+  border-color: var(--line-strong);
+}
+
+.thread-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--faint);
+}
+
+.thread-state {
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 8.5px;
+}
+
+.thread[data-state="needs_decision"] .thread-state {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.thread-path {
+  display: block;
+  margin: 6px 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+}
+
+.thread-message {
+  display: flex;
+  gap: 6px;
+  padding: 3px 0;
+  font-size: 11.5px;
+  color: var(--text-2);
+}
+
+.thread-message b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.proposal {
+  font-family: var(--mono);
+  font-size: 9px;
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+.drawer-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--line);
+  background: var(--well);
+}
+
+.drawer-foot select {
+  width: auto;
+  min-width: 128px;
+}
+
+.drawer-foot-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---------- Блокировки в drawer ---------- */
+
+.blocker-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.blocker-list:empty {
+  margin-bottom: 0;
+}
+
+.blocker-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  font-size: 12px;
+}
+
+.blocker-title {
+  max-width: 180px;
+  overflow: hidden;
+  color: var(--text-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.blocker-remove {
+  padding: 0 2px;
+  border: none;
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.blocker-remove:hover {
+  color: var(--accent);
+}
+
+.blocker-picker {
+  position: relative;
+}
+
+.blocker-options {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-0);
+  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.5);
+}
+
+.blocker-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+}
+
+.blocker-option:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.blocker-option .mono {
+  color: var(--accent);
+}
+
+.blocker-empty {
+  margin: 0;
+  padding: 8px 10px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+

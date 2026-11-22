@@ -1,0 +1,155 @@
+/* ---------- Тост ---------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(480px, calc(100vw - 32px));
+  padding: 9px 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-family: var(--mono);
+  font-size: 11px;
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.45);
+  transform: translateX(-50%);
+  animation: rise 200ms var(--ease) both;
+}
+
+.toast.is-error {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.toast-action {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    border-color 160ms var(--ease),
+    color 160ms var(--ease);
+}
+
+.toast-action:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.toast-close {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-3);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.toast-close:hover {
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+/* ---------- Анимации ---------- */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* ---------- Скроллбары ---------- */
+
+.board::-webkit-scrollbar,
+.column-list::-webkit-scrollbar,
+.drawer-scroll::-webkit-scrollbar,
+.palette-list::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.board::-webkit-scrollbar-thumb,
+.column-list::-webkit-scrollbar-thumb,
+.drawer-scroll::-webkit-scrollbar-thumb,
+.palette-list::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+}
+
+.board::-webkit-scrollbar-thumb:hover,
+.column-list::-webkit-scrollbar-thumb:hover,
+.drawer-scroll::-webkit-scrollbar-thumb:hover,
+.palette-list::-webkit-scrollbar-thumb:hover {
+  background: #4a4a4a;
+}
+
+.board::-webkit-scrollbar-track,
+.column-list::-webkit-scrollbar-track,
+.drawer-scroll::-webkit-scrollbar-track,
+.palette-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+

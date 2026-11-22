@@ -1,0 +1,194 @@
+/* ---------- Подтверждение удаления ---------- */
+
+.confirm {
+  width: min(420px, calc(100vw - 24px));
+  margin: auto;
+  padding: 20px 22px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-0);
+  box-shadow: 12px 12px 0 rgba(0, 0, 0, 0.5);
+}
+
+.confirm[open] {
+  animation: pop 160ms var(--ease) both;
+}
+
+.confirm h2 {
+  margin: 0 0 10px;
+  font-size: 18px;
+}
+
+.confirm p {
+  margin: 0 0 18px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ---------- Палитра ---------- */
+
+.palette {
+  width: min(560px, calc(100vw - 24px));
+  margin: 12vh auto auto;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-0);
+  box-shadow: 12px 12px 0 rgba(0, 0, 0, 0.5);
+}
+
+.palette[open] {
+  animation: pop 160ms var(--ease) both;
+}
+
+.palette-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.palette-input input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.palette-input input::placeholder {
+  color: var(--faint);
+}
+
+.palette-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  max-height: 320px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.palette-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-left: 2px solid transparent;
+  color: var(--text-2);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.palette-item:hover {
+  background: var(--surface-1);
+}
+
+.palette-item[aria-selected="true"] {
+  background: var(--surface-2);
+  border-left-color: var(--accent);
+  color: var(--text);
+}
+
+.palette-kind {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+.palette-empty {
+  margin: 0;
+  padding: 14px;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.palette-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--line);
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.palette-foot kbd + kbd {
+  margin-left: -4px;
+}
+
+/* ---------- Справка ---------- */
+
+.help {
+  width: min(480px, calc(100vw - 24px));
+  margin: auto;
+  padding: 20px 22px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-0);
+  box-shadow: 12px 12px 0 rgba(0, 0, 0, 0.5);
+}
+
+.help[open] {
+  animation: pop 160ms var(--ease) both;
+}
+
+.help .dialog-head {
+  margin-bottom: 0;
+}
+
+.help .dialog-head h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.help-grid {
+  display: grid;
+  gap: 1px;
+  margin: 16px 0 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  background: var(--line);
+}
+
+.help-grid div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  background: var(--surface-0);
+}
+
+.help-grid dt {
+  flex: 0 0 132px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-3);
+}
+
+.help-grid dd {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 12px;
+}
+

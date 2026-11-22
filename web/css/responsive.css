@@ -1,0 +1,164 @@
+/* ---------- Мобильные ---------- */
+
+@media (hover: none) {
+  .card-handle,
+  .column-add {
+    opacity: 0.6;
+  }
+}
+
+@media (max-width: 767px) {
+  .app {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    flex: 0 0 auto;
+    max-height: 42dvh;
+    gap: 10px;
+    padding: 10px 12px;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .sidebar-head {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .brand {
+    flex: 1;
+  }
+
+  .new-task {
+    width: auto;
+  }
+
+  .search {
+    order: 3;
+    flex: 1 1 100%;
+  }
+
+  .search kbd {
+    display: none;
+  }
+
+  .filters {
+    flex-direction: row;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .filters::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chip {
+    width: auto;
+    flex: 0 0 auto;
+  }
+
+  .sidebar-foot {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    margin-top: 0;
+    padding: 8px 0 0;
+  }
+
+  .sidebar-foot .language {
+    margin-right: auto;
+  }
+
+  .connection span:last-child {
+    display: none;
+  }
+
+  .toolbar {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .tool-field > span {
+    display: none;
+  }
+
+  .board {
+    grid-auto-columns: min(84vw, 320px);
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .column + .column {
+    border-left: 1px solid var(--line);
+  }
+
+  .empty-board {
+    width: calc(100% - 24px);
+    margin: 12px auto;
+    padding: 28px 18px;
+  }
+
+  .drawer {
+    width: 100vw;
+    border-left: none;
+  }
+
+  .drawer-head,
+  .drawer-scroll,
+  .drawer-foot {
+    padding-inline: 16px;
+  }
+
+  .drawer-foot {
+    flex-wrap: wrap;
+  }
+
+  .field-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .meta-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .palette {
+    margin: 8vh auto auto;
+  }
+
+  .help-grid dt {
+    flex-basis: 110px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .column-list[data-drop]::after {
+    background: Highlight;
+  }
+
+  .lease-square,
+  .connection-dot,
+  .column-dot {
+    forced-color-adjust: none;
+  }
+}

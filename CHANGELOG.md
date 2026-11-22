@@ -12,6 +12,7 @@
 
 ### Changed
 
+- Веб-клиент разбит на ES-модули `web/js/*` (точка входа `main.js`) и тематический CSS `web/css/*`; поведение не изменилось, монолиты `web/board.js` и `web/board.css` удалены.
 - `DELETE /api/tasks/:id` больше не отвечает 405 `use_canceled_status`: теперь 200 `{ ok, id }`, 404 `not_found`, 409 `leased` (чужая активная аренда защищает задачу от удаления).
 
 ### Fixed

@@ -321,6 +321,15 @@ export function labelChip(name, className = 'label') {
   return chip
 }
 
+// Чип на карточке — кнопка: по нему можно пройти Tab и включить фильтр Enter.
+function labelButton(name) {
+  const chip = el('button', 'label', name)
+  chip.type = 'button'
+  chip.style.setProperty('--label-color', labelColor(name))
+  chip.setAttribute('aria-pressed', String(state.label === name))
+  return chip
+}
+
 function updateCard(card, task) {
   card.dataset.updated = task.updated_at
   card.dataset.priority = String(task.priority)
@@ -337,12 +346,16 @@ function updateCard(card, task) {
 
   const labels = card.querySelector('.card-labels')
   const chips = task.labels.slice(0, 3).map((label) => {
-    const chip = labelChip(label)
+    const chip = labelButton(label)
     chip.title = t('card.labelFilter', { name: label })
+    chip.setAttribute('aria-label', t('card.labelFilter', { name: label }))
     chip.addEventListener('click', (event) => {
       event.stopPropagation()
       state.label = state.label === label ? '' : label
       render()
+      // render пересоздаёт чипы, поэтому возвращаем фокус тому же чипу,
+      // иначе после Enter фокус улетает в body и второй Enter не работает.
+      board.querySelector(`.card[data-id="${task.id}"] button.label`)?.focus()
     })
     return chip
   })

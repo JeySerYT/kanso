@@ -736,3 +736,18 @@ body.density-compact .column-head {
   border-color: var(--accent);
   color: var(--accent);
 }
+
+button.label {
+  appearance: none;
+  border-radius: 0;
+  text-align: inherit;
+}
+
+button.label[aria-pressed='true'] {
+  border-color: var(--label-color);
+  background: color-mix(in srgb, var(--label-color) 26%, transparent);
+}
+
+button.label:focus-visible {
+  outline-offset: 2px;
+}

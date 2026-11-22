@@ -108,6 +108,7 @@
   "compose.bodyPlaceholder": "Context, links, acceptance criteria",
   "compose.field.labels": "Labels",
   "compose.labelPlaceholder": "New label",
+  "compose.labelAria": "New label name",
   "compose.addLabel": "Create",
   "compose.noLabels": "No labels yet — create the first one",
   "compose.newProject": "＋ New project…",

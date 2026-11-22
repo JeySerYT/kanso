@@ -11,6 +11,7 @@ import {
   commentForm,
   dateLabel,
   deleteDialog,
+  deleteKeep,
   deleteText,
   drawerBlockers,
   drawerCancel,
@@ -401,7 +402,11 @@ export function requestDelete(id) {
   if (!task) return
   pendingDeleteId = id
   deleteText.textContent = t('delete.text', { title: task.title, id: task.id })
-  if (!deleteDialog.open) deleteDialog.showModal()
+  if (!deleteDialog.open) {
+    deleteDialog.showModal()
+    // Фокус по умолчанию уходит в body; безопасный выбор — «Оставить».
+    deleteKeep.focus()
+  }
 }
 
 export async function confirmDelete() {

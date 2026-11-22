@@ -108,6 +108,7 @@
   "compose.bodyPlaceholder": "Контекст, ссылки, критерии готовности",
   "compose.field.labels": "Метки",
   "compose.labelPlaceholder": "Новая метка",
+  "compose.labelAria": "Название новой метки",
   "compose.addLabel": "Создать",
   "compose.noLabels": "Пока нет меток — создайте первую",
   "compose.newProject": "＋ Новый проект…",

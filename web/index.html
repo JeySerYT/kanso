@@ -117,11 +117,11 @@
           <div class="toolbar-group">
             <label class="tool-field">
               <span data-i18n="toolbar.label">Метка</span>
-              <select id="filter-label"></select>
+              <select id="filter-label" data-i18n-aria-label="toolbar.label"></select>
             </label>
             <label class="tool-field">
               <span data-i18n="toolbar.priority">Приоритет</span>
-              <select id="filter-priority">
+              <select id="filter-priority" data-i18n-aria-label="toolbar.priority">
                 <option value="" data-i18n="toolbar.any">любой</option>
                 <option value="0">p0</option>
                 <option value="1">p1</option>
@@ -144,7 +144,7 @@
           <div class="toolbar-group">
             <label class="tool-field">
               <span data-i18n="toolbar.sort">Сортировка</span>
-              <select id="sort-select">
+              <select id="sort-select" data-i18n-aria-label="toolbar.sort">
                 <option value="manual" data-i18n="sort.manual">вручную</option>
                 <option value="priority" data-i18n="sort.priority">по приоритету</option>
                 <option value="updated" data-i18n="sort.updated">по обновлению</option>
@@ -346,6 +346,7 @@
               id="label-name"
               autocomplete="off"
               maxlength="32"
+              data-i18n-aria-label="compose.labelAria"
               placeholder="Новая метка"
               data-i18n-placeholder="compose.labelPlaceholder"
             >
@@ -473,11 +474,11 @@
       </div>
     </dialog>
 
-    <dialog class="confirm" id="delete-dialog" closedby="any" aria-labelledby="delete-dialog-title">
+    <dialog class="confirm" id="delete-dialog" closedby="any" aria-labelledby="delete-dialog-title" aria-describedby="delete-dialog-text">
       <h2 id="delete-dialog-title" data-i18n="delete.title">Удалить задачу?</h2>
       <p id="delete-dialog-text"></p>
       <div class="confirm-actions">
-        <button class="button button-soft" type="button" data-close>
+        <button class="button button-soft" id="delete-keep" type="button" data-close>
           <span data-i18n="delete.keep">Оставить</span>
         </button>
         <button class="button button-danger" id="delete-confirm" type="button">

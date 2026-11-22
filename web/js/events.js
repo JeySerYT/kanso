@@ -42,7 +42,10 @@ export function connectEvents() {
     }
     if (payload.type === 'hello') {
       setConnection(true)
-      if (payload.revision < state.revision) {
+      // Вкладка спала, сеть рвалась или сервер перезапускался: ревизии
+      // разошлись, часть событий потеряна. Догоняем доску, а не ждём
+      // следующего изменения — иначе пустая доска висит до перезагрузки.
+      if (payload.revision !== state.revision) {
         state.revision = 0
         scheduleRefresh()
       }

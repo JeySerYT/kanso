@@ -158,9 +158,9 @@ export function openStore(path) {
     return priority
   }
 
-  const normalizeLabels = (labels) => {
-    if (!Array.isArray(labels)) return []
-    return [...new Set(labels.map((label) => String(label).trim()).filter(Boolean))]
+  const normalizeStringList = (values) => {
+    if (!Array.isArray(values)) return []
+    return [...new Set(values.map((value) => String(value).trim()).filter(Boolean))]
   }
 
   const LABEL_PALETTE = [
@@ -240,25 +240,29 @@ export function openStore(path) {
     blocked_by = [],
   }) => {
     if (!title || !String(title).trim()) throw badRequest('title_required')
-    const stamp = now()
-    const id = nextId(project)
-    db.prepare(
-      `INSERT INTO tasks (id, title, body, project, branch, status, priority, position, labels, blocked_by, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'backlog', ?, ?, ?, ?, ?, ?)`,
-    ).run(
-      id,
-      String(title).trim(),
-      String(body),
-      String(project),
-      String(branch).trim(),
-      normalizePriority(priority),
-      nextPosition('backlog'),
-      JSON.stringify(normalizeLabels(labels)),
-      JSON.stringify(normalizeLabels(blocked_by)),
-      stamp,
-      stamp,
-    )
-    return getTask(id)
+    // Транзакция: проверка цикла и запись атомарны, отказ не сжигает номер задачи.
+    return tx(() => {
+      const stamp = now()
+      const id = nextId(project)
+      const blockers = normalizeBlockers(id, blocked_by)
+      db.prepare(
+        `INSERT INTO tasks (id, title, body, project, branch, status, priority, position, labels, blocked_by, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, 'backlog', ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        id,
+        String(title).trim(),
+        String(body),
+        String(project),
+        String(branch).trim(),
+        normalizePriority(priority),
+        nextPosition('backlog'),
+        JSON.stringify(normalizeStringList(labels)),
+        JSON.stringify(blockers),
+        stamp,
+        stamp,
+      )
+      return getTask(id)
+    })
   }
 
   const getTask = (id) => {
@@ -322,45 +326,49 @@ export function openStore(path) {
   }
 
   const updateTask = (id, patch = {}) => {
-    const task = getTask(id)
-    if (!task) return null
+    // Транзакция: проверка цикла и запись атомарны, параллельный PATCH не создаст цикл.
+    return tx(() => {
+      const task = getTask(id)
+      if (!task) return null
 
-    const fields = []
-    const params = []
-    if (patch.title !== undefined) {
-      fields.push('title = ?')
-      params.push(String(patch.title).trim())
-    }
-    if (patch.body !== undefined) {
-      fields.push('body = ?')
-      params.push(String(patch.body))
-    }
-    if (patch.project !== undefined) {
-      fields.push('project = ?')
-      params.push(String(patch.project))
-    }
-    if (patch.branch !== undefined) {
-      fields.push('branch = ?')
-      params.push(String(patch.branch).trim())
-    }
-    if (patch.priority !== undefined) {
-      fields.push('priority = ?')
-      params.push(normalizePriority(patch.priority, task.priority))
-    }
-    if (patch.labels !== undefined) {
-      fields.push('labels = ?')
-      params.push(JSON.stringify(normalizeLabels(patch.labels)))
-    }
-    if (patch.blocked_by !== undefined) {
-      fields.push('blocked_by = ?')
-      params.push(JSON.stringify(patch.blocked_by))
-    }
-    if (!fields.length) return task
+      const fields = []
+      const params = []
+      if (patch.title !== undefined) {
+        fields.push('title = ?')
+        params.push(String(patch.title).trim())
+      }
+      if (patch.body !== undefined) {
+        fields.push('body = ?')
+        params.push(String(patch.body))
+      }
+      if (patch.project !== undefined) {
+        fields.push('project = ?')
+        params.push(String(patch.project))
+      }
+      if (patch.branch !== undefined) {
+        fields.push('branch = ?')
+        params.push(String(patch.branch).trim())
+      }
+      if (patch.priority !== undefined) {
+        fields.push('priority = ?')
+        params.push(normalizePriority(patch.priority, task.priority))
+      }
+      if (patch.labels !== undefined) {
+        fields.push('labels = ?')
+        params.push(JSON.stringify(normalizeStringList(patch.labels)))
+      }
+      if (patch.blocked_by !== undefined) {
+        const blockers = normalizeBlockers(id, patch.blocked_by)
+        fields.push('blocked_by = ?')
+        params.push(JSON.stringify(blockers))
+      }
+      if (!fields.length) return task
 
-    fields.push('updated_at = ?')
-    params.push(now(), id)
-    db.prepare(`UPDATE tasks SET ${fields.join(', ')} WHERE id = ?`).run(...params)
-    return getTask(id)
+      fields.push('updated_at = ?')
+      params.push(now(), id)
+      db.prepare(`UPDATE tasks SET ${fields.join(', ')} WHERE id = ?`).run(...params)
+      return getTask(id)
+    })
   }
 
   const tx = (fn) => {
@@ -410,6 +418,32 @@ export function openStore(path) {
       .prepare(`SELECT id FROM tasks WHERE id IN (${placeholders}) AND status != 'done'`)
       .all(...blockedBy)
       .map((row) => row.id)
+  }
+
+  // Цикл блокировок = задача транзитивно блокирует сама себя и никогда не выйдет в работу.
+  const assertNoCycle = (id, blockedBy) => {
+    const graph = new Map(
+      db
+        .prepare('SELECT id, blocked_by FROM tasks')
+        .all()
+        .map((row) => [row.id, parseJson(row.blocked_by, [])]),
+    )
+    graph.set(id, blockedBy)
+    const seen = new Set()
+    const stack = [...blockedBy]
+    while (stack.length) {
+      const current = stack.pop()
+      if (current === id) throw badRequest('cycle')
+      if (seen.has(current)) continue
+      seen.add(current)
+      stack.push(...(graph.get(current) ?? []))
+    }
+  }
+
+  const normalizeBlockers = (id, blockedBy) => {
+    const blockers = normalizeStringList(blockedBy)
+    assertNoCycle(id, blockers)
+    return blockers
   }
 
   const activeLeaseOf = (task, session) => {

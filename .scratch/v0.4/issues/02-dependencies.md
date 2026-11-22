@@ -4,9 +4,9 @@
 
 **Blocked by:** None (после 01, чтобы не конфликтовать в store).
 
-**Status:** ready-for-agent
+**Status:** done (коммит 24efd84)
 
-- [ ] Валидация self/cycle в store + тесты
-- [ ] Пикер и список блокировок в drawer, RU/EN паритет
-- [ ] PATCH сохраняет, доска и SSE обновляются
-- [ ] npm test зелёный, браузерный сценарий зелёный
+- [x] Валидация self/cycle в store + тесты (test/dependencies.test.js, 7 тестов)
+- [x] Пикер и список блокировок в drawer, RU/EN паритет
+- [x] PATCH сохраняет, доска и SSE обновляются
+- [x] npm test зелёный (81/81), браузерный сценарий зелёный (13 проверок)

@@ -1928,6 +1928,99 @@ select option:checked {
   gap: 8px;
 }
 
+/* ---------- Блокировки в drawer ---------- */
+
+.blocker-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.blocker-list:empty {
+  margin-bottom: 0;
+}
+
+.blocker-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  font-size: 12px;
+}
+
+.blocker-title {
+  max-width: 180px;
+  overflow: hidden;
+  color: var(--text-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.blocker-remove {
+  padding: 0 2px;
+  border: none;
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.blocker-remove:hover {
+  color: var(--accent);
+}
+
+.blocker-picker {
+  position: relative;
+}
+
+.blocker-options {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-0);
+  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.5);
+}
+
+.blocker-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+}
+
+.blocker-option:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.blocker-option .mono {
+  color: var(--accent);
+}
+
+.blocker-empty {
+  margin: 0;
+  padding: 8px 10px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
 /* ---------- Подтверждение удаления ---------- */
 
 .confirm {

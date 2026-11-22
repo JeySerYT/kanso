@@ -58,6 +58,9 @@ const drawerDelete = document.querySelector('#drawer-delete')
 const deleteDialog = document.querySelector('#delete-dialog')
 const deleteText = document.querySelector('#delete-dialog-text')
 const deleteConfirm = document.querySelector('#delete-confirm')
+const drawerBlockers = document.querySelector('#drawer-blockers')
+const blockerQuery = document.querySelector('#blocker-query')
+const blockerOptions = document.querySelector('#blocker-options')
 const drawerPriority = document.querySelector('#drawer-priority')
 const drawerLabelPicker = document.querySelector('#drawer-label-picker')
 const commentForm = document.querySelector('#comment-form')
@@ -275,6 +278,13 @@ async function loadBoard() {
     // Задачу могли удалить в другой вкладке — не оставляем пустой drawer и диалог удаления.
     if (taskDialog.open && currentTaskId && !taskById(currentTaskId)) taskDialog.close()
     if (deleteDialog.open && pendingDeleteId && !taskById(pendingDeleteId)) deleteDialog.close()
+    // Блокировки могли поменять в другой вкладке — обновляем чипы, не трогая открытый поиск.
+    if (taskDialog.open && currentTaskId) {
+      const fresh = taskById(currentTaskId)
+      if (fresh && drawerBlockers.dataset.blockedBy !== JSON.stringify(fresh.blocked_by)) {
+        renderBlockerChips(fresh)
+      }
+    }
   } catch {
     if (Date.now() - lastErrorAt > 5000) {
       lastErrorAt = Date.now()
@@ -1053,9 +1063,6 @@ function renderDrawer({ task, comments, threads }) {
   if (task.claim?.touched_paths?.length) {
     entries.push([t('drawer.meta.files'), task.claim.touched_paths.join(', '), true, ''])
   }
-  if (task.blocked_by.length) {
-    entries.push([t('drawer.meta.blockers'), task.blocked_by.join(', '), true, ''])
-  }
 
   meta.replaceChildren(
     ...entries.map(([term, value, mono, className, leaseUntil]) => {
@@ -1086,6 +1093,7 @@ function renderDrawer({ task, comments, threads }) {
     }),
   )
   renderDrawerLabels(task)
+  renderDrawerBlockers(task)
 
   const threadSection = document.querySelector('#drawer-threads-section')
   const threadList = document.querySelector('#drawer-threads')
@@ -1135,6 +1143,80 @@ async function toggleDrawerLabel(task, name) {
     loadBoard()
   } catch (error) {
     showToast(t('toast.labelsFailed', { error: errorText(error) }), { error: true })
+  }
+}
+
+function renderBlockerChips(task) {
+  drawerBlockers.dataset.blockedBy = JSON.stringify(task.blocked_by)
+  drawerBlockers.replaceChildren(
+    ...task.blocked_by.map((id) => {
+      const chip = el('span', 'blocker-chip')
+      chip.append(el('span', 'mono', id))
+      const target = taskById(id)
+      if (target) chip.append(el('span', 'blocker-title', target.title))
+      const remove = el('button', 'blocker-remove', '×')
+      remove.type = 'button'
+      remove.setAttribute('aria-label', t('drawer.blockerRemove'))
+      remove.addEventListener('click', () => {
+        // Берём свежие данные: задачу могли поменять в другой вкладке.
+        const fresh = taskById(task.id)
+        if (fresh) setBlockers(fresh, fresh.blocked_by.filter((blocker) => blocker !== id))
+      })
+      chip.append(remove)
+      return chip
+    }),
+  )
+}
+
+function renderDrawerBlockers(task) {
+  renderBlockerChips(task)
+  blockerQuery.value = ''
+  blockerOptions.hidden = true
+}
+
+function renderBlockerOptions(task) {
+  const query = blockerQuery.value.trim().toLowerCase()
+  if (!query) {
+    blockerOptions.hidden = true
+    return
+  }
+  const matches = state.tasks
+    .filter((other) => other.id !== task.id && !task.blocked_by.includes(other.id))
+    .filter(
+      (other) =>
+        other.id.toLowerCase().includes(query) || other.title.toLowerCase().includes(query),
+    )
+    .slice(0, 6)
+  blockerOptions.hidden = false
+  blockerOptions.replaceChildren(
+    ...(matches.length
+      ? matches.map((other) => {
+          const row = el('button', 'blocker-option')
+          row.type = 'button'
+          row.append(el('span', 'mono', other.id), el('span', null, other.title))
+          row.addEventListener('click', () => {
+            const fresh = taskById(task.id)
+            if (fresh && !fresh.blocked_by.includes(other.id)) {
+              setBlockers(fresh, [...fresh.blocked_by, other.id])
+            }
+          })
+          return row
+        })
+      : [el('p', 'blocker-empty', t('drawer.blockerEmpty'))]),
+  )
+}
+
+async function setBlockers(task, blockedBy) {
+  try {
+    markLocal()
+    await api(`/api/tasks/${encodeURIComponent(task.id)}`, {
+      method: 'PATCH',
+      body: { blocked_by: blockedBy },
+    })
+    await openTask(task.id)
+    loadBoard()
+  } catch (error) {
+    showToast(t('toast.blockersFailed', { error: errorText(error) }), { error: true })
   }
 }
 
@@ -1722,6 +1804,13 @@ drawerTitle.addEventListener('dblclick', () => {
   if (task) startTitleEdit(drawerTitle, task, { large: true })
 })
 drawerStatus.addEventListener('change', () => moveFromDrawer(drawerStatus.value))
+blockerQuery.addEventListener('input', () => {
+  const task = taskById(currentTaskId)
+  if (task) renderBlockerOptions(task)
+})
+taskDialog.addEventListener('pointerdown', (event) => {
+  if (!event.target.closest('.blocker-picker')) blockerOptions.hidden = true
+})
 drawerDone.addEventListener('click', () => moveFromDrawer('done'))
 drawerCancel.addEventListener('click', cancelTask)
 drawerDelete.addEventListener('click', () => requestDelete(currentTaskId))

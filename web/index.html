@@ -320,6 +320,24 @@
             </div>
           </section>
 
+          <section class="drawer-section">
+            <h3 data-i18n="drawer.blockers">Блокировки</h3>
+            <div class="blocker-list" id="drawer-blockers"></div>
+            <div class="blocker-picker">
+              <label class="field">
+                <span class="visually-hidden" data-i18n="drawer.blockers">Блокировки</span>
+                <input
+                  id="blocker-query"
+                  type="text"
+                  autocomplete="off"
+                  placeholder="Найти задачу по id или названию…"
+                  data-i18n-placeholder="drawer.blockerSearch"
+                >
+              </label>
+              <div class="blocker-options" id="blocker-options" hidden></div>
+            </div>
+          </section>
+
           <section class="drawer-section" id="drawer-threads-section" hidden>
             <h3 data-i18n="drawer.threads">Переговоры</h3>
             <div class="threads" id="drawer-threads"></div>

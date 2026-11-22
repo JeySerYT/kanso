@@ -58,6 +58,14 @@
               autocomplete="off"
               spellcheck="false"
             >
+            <button
+              class="search-clear"
+              id="search-clear"
+              type="button"
+              hidden
+              data-i18n-aria-label="sidebar.searchClear"
+              aria-label="Очистить поиск"
+            >×</button>
             <kbd aria-hidden="true">/</kbd>
           </label>
         </div>
@@ -130,6 +138,7 @@
               <span data-i18n="toolbar.reset">Сброс</span>
               <span class="button-glyph" aria-hidden="true">×</span>
             </button>
+            <output class="toolbar-count" id="filter-count" hidden></output>
           </div>
 
           <div class="toolbar-group">

@@ -99,6 +99,13 @@ function statusColor(status) {
 
 const isView = (value) => value === 'board' || value === 'graph'
 
+// hash меняется отдельно от поиска и фильтров: параметры адреса сохраняем.
+function writeViewHash(mode) {
+  const url = new URL(location.href)
+  url.hash = mode
+  history.replaceState(null, '', url)
+}
+
 function syncViewButtons() {
   // На пустой доске показывается онбординг, поэтому переключатель отражает «Доску».
   const mode = state.tasks.length ? state.view : 'board'
@@ -116,7 +123,7 @@ export function initView() {
   const mode = isView(hash) ? hash : isView(stored) ? stored : 'board'
   state.view = mode
   storage.set(VIEW_KEY, mode)
-  if (!isView(hash)) history.replaceState(null, '', `#${mode}`)
+  if (!isView(hash)) writeViewHash(mode)
   syncViewButtons()
 }
 
@@ -124,7 +131,7 @@ export function setView(mode) {
   if (!isView(mode) || state.view === mode || !state.tasks.length) return
   state.view = mode
   storage.set(VIEW_KEY, mode)
-  history.replaceState(null, '', `#${mode}`)
+  writeViewHash(mode)
   syncViewButtons()
   render()
   announce(t(mode === 'graph' ? 'announce.viewGraph' : 'announce.viewBoard'))

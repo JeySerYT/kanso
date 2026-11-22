@@ -13,6 +13,8 @@ export const filters = document.querySelector('#filters')
 export const projectsSection = document.querySelector('#projects-section')
 export const emptyBoard = document.querySelector('#empty-board')
 export const search = document.querySelector('#search')
+export const searchClear = document.querySelector('#search-clear')
+export const filterCount = document.querySelector('#filter-count')
 export const versionEl = document.querySelector('#version')
 export const connectionEl = document.querySelector('#connection')
 export const connectionText = document.querySelector('#connection-text')
@@ -268,13 +270,12 @@ export function visibleTask(task) {
   if (state.label && !task.labels.includes(state.label)) return false
   if (state.priority !== '' && String(task.priority) !== state.priority) return false
   if (state.leased && !task.claim) return false
-  if (!state.query) return true
-  const needle = state.query.toLowerCase()
-  return (
-    task.id.toLowerCase().includes(needle) ||
-    task.title.toLowerCase().includes(needle) ||
-    task.project.toLowerCase().includes(needle) ||
-    (task.branch ?? '').toLowerCase().includes(needle) ||
-    task.labels.some((label) => label.toLowerCase().includes(needle))
-  )
+  const words = state.query.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  if (!words.length) return true
+  // Каждое слово запроса должно найтись хотя бы в одном поле: «экспорт csv»
+  // ищет задачу, где встречаются оба слова, а не только точную фразу.
+  const haystack = [task.id, task.title, task.project, task.branch ?? '', ...task.labels]
+    .join(' ')
+    .toLowerCase()
+  return words.every((word) => haystack.includes(word))
 }

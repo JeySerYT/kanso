@@ -45,6 +45,15 @@
   max-width: 150px;
 }
 
+.toolbar-count {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
 .tool-toggle {
   display: inline-flex;
   align-items: center;

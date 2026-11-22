@@ -35,6 +35,7 @@ import {
   paletteOpen,
   paletteQuery,
   search,
+  searchClear,
   sortSelect,
   state,
   storage,
@@ -45,7 +46,7 @@ import {
   viewGraph,
 } from './core.js'
 import { loadBoard, loadProjects, render, startTitleEdit } from './board.js'
-import { resetFilters, setDensity, setSort } from './toolbar.js'
+import { readFiltersFromUrl, resetFilters, setDensity, setSort } from './toolbar.js'
 import {
   addLabel,
   openCompose,
@@ -114,7 +115,16 @@ board.addEventListener(
 document.addEventListener('keydown', onEscapeDrag)
 
 search.addEventListener('input', () => {
-  state.query = search.value.trim()
+  // В поле хранится ровно то, что набрал пользователь: trim() только при поиске,
+  // иначе пробел между словами стирался сразу после ввода.
+  state.query = search.value
+  render()
+})
+
+searchClear.addEventListener('click', () => {
+  state.query = ''
+  search.value = ''
+  search.focus()
   render()
 })
 
@@ -239,7 +249,9 @@ async function boot() {
   state.sort = SORT_MODES.includes(storage.get('kanso.sort', 'manual'))
     ? storage.get('kanso.sort', 'manual')
     : 'manual'
+  readFiltersFromUrl()
   setDensity(storage.get('kanso.density', 'comfortable'))
+  readFiltersFromUrl()
   initEffects()
   initGraph()
   initView()

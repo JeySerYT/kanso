@@ -213,6 +213,26 @@
   filter: invert(0.7);
 }
 
+.search-clear {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.search-clear:hover {
+  color: var(--accent);
+}
+
 .connection {
   display: flex;
   align-items: center;

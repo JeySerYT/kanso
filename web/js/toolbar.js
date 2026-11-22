@@ -5,15 +5,19 @@ import {
   densityToggle,
   densityValue,
   el,
+  filterCount,
   filterLabel,
   filterLeased,
   filterPriority,
   filterReset,
   filters,
   option,
+  search,
+  searchClear,
   sortSelect,
   state,
   storage,
+  visibleTask,
 } from './core.js'
 import { render } from './board.js'
 
@@ -77,8 +81,56 @@ export function renderToolbar() {
   filterPriority.value = state.priority
   filterLeased.setAttribute('aria-pressed', String(state.leased))
   sortSelect.value = state.sort
-  const active = Boolean(state.label || state.priority || state.leased || state.query || state.project !== 'all')
+  const active = Boolean(state.label || state.priority || state.leased || state.query.trim() || state.project !== 'all')
   filterReset.hidden = !active
+  searchClear.hidden = !state.query
+  filterCount.hidden = !active
+  if (active) {
+    const shown = state.tasks.filter(visibleTask).length
+    filterCount.textContent = t('toolbar.found', { shown, total: state.tasks.length })
+  }
+  writeFiltersToUrl()
+}
+
+/* ---------- Состояние фильтров в адресе ---------- */
+
+const FILTER_KEYS = ['q', 'label', 'project', 'priority', 'leased']
+// До чтения адреса render() вызывается из настроек вида и плотности;
+// запись в адрес в этот момент стёрла бы параметры, которые ещё не прочитаны.
+let urlReady = false
+
+function filtersUrl() {
+  const url = new URL(location.href)
+  for (const key of FILTER_KEYS) url.searchParams.delete(key)
+  const put = (key, value) => {
+    if (value) url.searchParams.set(key, value)
+  }
+  put('q', state.query.trim())
+  put('label', state.label)
+  put('project', state.project === 'all' ? '' : state.project)
+  put('priority', state.priority)
+  put('leased', state.leased ? '1' : '')
+  return url
+}
+
+// replaceState, а не pushState: фильтр не должен добавлять записи в историю.
+export function writeFiltersToUrl() {
+  if (!urlReady) return
+  const url = filtersUrl()
+  const next = `${url.pathname}${url.search}${url.hash}`
+  const current = `${location.pathname}${location.search}${location.hash}`
+  if (next !== current) history.replaceState(null, '', next)
+}
+
+export function readFiltersFromUrl() {
+  const params = new URLSearchParams(location.search)
+  state.query = params.get('q') ?? ''
+  state.label = params.get('label') ?? ''
+  state.project = params.get('project') || 'all'
+  const priority = params.get('priority') ?? ''
+  state.priority = ['0', '1', '2', '3', '4'].includes(priority) ? priority : ''
+  state.leased = params.get('leased') === '1'
+  urlReady = true
 }
 
 export function resetFilters() {

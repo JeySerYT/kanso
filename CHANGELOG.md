@@ -2,7 +2,7 @@
 
 Все заметные изменения проекта. Формат — [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/), версии по SemVer со стадиями `alpha` / `beta` / `release`.
 
-## [Unreleased]
+## [0.4.0-alpha.1] — 2026-11-22
 
 ### Added
 

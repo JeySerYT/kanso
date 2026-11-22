@@ -118,6 +118,7 @@
   "compose.newBranchPlaceholder": "feat/название",
   "compose.noBranch": "— без ветки —",
   "compose.cancel": "Отмена",
+  "compose.discard": "Заголовок или описание не сохранены. Закрыть и потерять текст?",
   "compose.submit": "Создать",
 
   "drawer.close": "Закрыть",

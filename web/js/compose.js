@@ -142,6 +142,15 @@ export async function addLabel() {
   }
 }
 
+export function composeHasDraft() {
+  const form = new FormData(composeForm)
+  return Boolean(
+    String(form.get('title') ?? '').trim() ||
+      String(form.get('body') ?? '').trim() ||
+      composeLabels.size,
+  )
+}
+
 export async function submitCompose(event) {
   event.preventDefault()
   const form = new FormData(composeForm)

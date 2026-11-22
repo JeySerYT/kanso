@@ -38,6 +38,39 @@ import { renderPalette } from './palette.js'
 let currentTaskId = null
 let pendingDeleteId = null
 
+// Черновики комментариев: любая мутация (статус, метка, приоритет) перерисовывает
+// drawer через openTask, и раньше набранный текст стирался. Держим его по id
+// задачи в sessionStorage: переживает перерисовку и повторное открытие карточки.
+const DRAFT_PREFIX = 'kanso.comment.'
+const draftKey = (id) => `${DRAFT_PREFIX}${id}`
+
+function readDraft(id) {
+  try {
+    return sessionStorage.getItem(draftKey(id)) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+function writeDraft(id, text) {
+  try {
+    if (text.trim()) sessionStorage.setItem(draftKey(id), text)
+    else sessionStorage.removeItem(draftKey(id))
+  } catch {
+    // Приватный режим: черновик просто не сохранится.
+  }
+}
+
+function clearDraft(id) {
+  try {
+    sessionStorage.removeItem(draftKey(id))
+  } catch {
+    // см. writeDraft
+  }
+}
+
+const commentBody = () => commentForm.querySelector('textarea[name="body"]')
+
 export const getCurrentTaskId = () => currentTaskId
 
 export function onDrawerClose() {
@@ -153,7 +186,12 @@ function renderDrawer({ task, comments, threads }) {
   }
 
   commentForm.dataset.taskId = task.id
-  commentForm.reset()
+  if (commentForm.dataset.draftFor !== task.id) {
+    // Другая задача: сбрасываем тип комментария и подставляем её черновик.
+    commentForm.reset()
+    commentForm.dataset.draftFor = task.id
+    commentBody().value = readDraft(task.id)
+  }
 }
 
 function renderDrawerLabels(task) {
@@ -429,15 +467,24 @@ export async function submitComment(event) {
   const form = new FormData(commentForm)
   const body = String(form.get('body') ?? '').trim()
   if (!body || !commentForm.dataset.taskId) return
+  const id = commentForm.dataset.taskId
   try {
-    await api(`/api/tasks/${encodeURIComponent(commentForm.dataset.taskId)}/comment`, {
+    await api(`/api/tasks/${encodeURIComponent(id)}/comment`, {
       method: 'POST',
       body: { body, kind: String(form.get('kind') ?? 'note') },
     })
-    const id = currentTaskId
+    // Комментарий отправлен: черновик больше не нужен.
+    clearDraft(id)
+    commentBody().value = ''
     await openTask(id)
     loadBoard()
   } catch (error) {
     showToast(t('toast.commentFailed', { error: errorText(error) }), { error: true })
   }
+}
+
+// Вызывается на input: черновик живёт до отправки или очистки поля.
+export function rememberCommentDraft() {
+  const id = commentForm.dataset.taskId
+  if (id) writeDraft(id, commentBody().value)
 }

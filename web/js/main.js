@@ -1,4 +1,4 @@
-import { applyStaticTranslations, currentLocale, initI18n } from '../i18n.js'
+import { applyStaticTranslations, currentLocale, initI18n, t } from '../i18n.js'
 import {
   SORT_MODES,
   blockerOptions,
@@ -6,6 +6,7 @@ import {
   board,
   commentForm,
   composeBranch,
+  composeDialog,
   composeForm,
   composeProject,
   deleteConfirm,
@@ -49,6 +50,7 @@ import { loadBoard, loadProjects, render, startTitleEdit } from './board.js'
 import { readFiltersFromUrl, resetFilters, setDensity, setSort } from './toolbar.js'
 import {
   addLabel,
+  composeHasDraft,
   openCompose,
   populateComposeBranches,
   submitCompose,
@@ -63,6 +65,7 @@ import {
   moveFromDrawer,
   onDeleteDialogClose,
   onDrawerClose,
+  rememberCommentDraft,
   renderBlockerOptions,
   requestDelete,
   submitComment,
@@ -174,8 +177,23 @@ labelName.addEventListener('keydown', (event) => {
 languageSelect.addEventListener('change', () => changeLanguage(languageSelect.value))
 
 for (const button of document.querySelectorAll('[data-close]')) {
-  button.addEventListener('click', () => button.closest('dialog')?.close())
+  button.addEventListener('click', () => {
+    const dialog = button.closest('dialog')
+    if (!dialog) return
+    if (dialog === composeDialog && !canCloseCompose()) return
+    dialog.close()
+  })
 }
+
+// Незавершённая задача не должна исчезать от случайного Esc или клика по фону.
+// Черновик комментария в drawer не теряется: он хранится по id задачи.
+function canCloseCompose() {
+  return !composeHasDraft() || window.confirm(t('compose.discard'))
+}
+
+composeDialog.addEventListener('cancel', (event) => {
+  if (!canCloseCompose()) event.preventDefault()
+})
 
 taskDialog.addEventListener('close', onDrawerClose)
 
@@ -199,6 +217,7 @@ deleteDialog.addEventListener('close', onDeleteDialogClose)
 drawerPriority.addEventListener('change', changeDrawerPriority)
 
 commentForm.addEventListener('submit', submitComment)
+commentForm.addEventListener('input', rememberCommentDraft)
 
 paletteQuery.addEventListener('input', renderPalette)
 paletteQuery.addEventListener('keydown', (event) => {
@@ -235,7 +254,9 @@ if (!('closedBy' in HTMLDialogElement.prototype)) {
       pressedOutside = outside(event, dialog)
     })
     dialog.addEventListener('pointerup', (event) => {
-      if (pressedOutside && outside(event, dialog)) dialog.close()
+      if (!pressedOutside || !outside(event, dialog)) return
+      if (dialog === composeDialog && !canCloseCompose()) return
+      dialog.close()
     })
   }
 }

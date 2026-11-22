@@ -118,6 +118,7 @@
   "compose.newBranchPlaceholder": "feat/name",
   "compose.noBranch": "— no branch —",
   "compose.cancel": "Cancel",
+  "compose.discard": "The title or description is not saved. Close and discard it?",
   "compose.submit": "Create",
 
   "drawer.close": "Close",

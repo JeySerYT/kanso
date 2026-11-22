@@ -11,6 +11,7 @@ import {
   el,
   emptyBoard,
   errorText,
+  graphView,
   hueOf,
   labelColor,
   leaseCountdown,
@@ -29,11 +30,15 @@ import {
   taskById,
   toolbar,
   versionEl,
+  viewBoard,
+  viewGraph,
+  visibleTask,
 } from './core.js'
 import { renderFilters, renderToolbar } from './toolbar.js'
 import { openCompose, renderLabelPicker } from './compose.js'
 import { openTask, syncOpenDialogs } from './drawer.js'
 import { onHandleKeyDown, onPointerDown } from './drag.js'
+import { renderGraph } from './graph.js'
 
 const columns = new Map()
 let lastErrorAt = 0
@@ -77,36 +82,25 @@ export function render() {
   if (search.value !== state.query) search.value = state.query
 
   const empty = state.tasks.length === 0
+  const graph = state.view === 'graph'
   emptyBoard.hidden = !empty
-  board.hidden = empty
+  board.hidden = empty || graph
+  graphView.hidden = empty || !graph
+  viewBoard.disabled = empty
+  viewGraph.disabled = empty
   projectsSection.hidden = empty
   toolbar.hidden = empty
 
   renderFilters()
   renderToolbar()
-  if (!empty) renderColumns()
+  if (!empty && !graph) renderColumns()
+  renderGraph()
 }
 
 // Сброс колонок при смене языка: подписи и порядок пересоздаются с нуля.
 export function resetColumns() {
   columns.clear()
   board.replaceChildren()
-}
-
-function visibleTask(task) {
-  if (state.project !== 'all' && task.project !== state.project) return false
-  if (state.label && !task.labels.includes(state.label)) return false
-  if (state.priority !== '' && String(task.priority) !== state.priority) return false
-  if (state.leased && !task.claim) return false
-  if (!state.query) return true
-  const needle = state.query.toLowerCase()
-  return (
-    task.id.toLowerCase().includes(needle) ||
-    task.title.toLowerCase().includes(needle) ||
-    task.project.toLowerCase().includes(needle) ||
-    (task.branch ?? '').toLowerCase().includes(needle) ||
-    task.labels.some((label) => label.toLowerCase().includes(needle))
-  )
 }
 
 function sortTasks(tasks) {

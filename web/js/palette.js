@@ -16,6 +16,7 @@ import { render } from './board.js'
 import { openCompose } from './compose.js'
 import { getCurrentTaskId, openTask, requestDelete } from './drawer.js'
 import { changeLanguage } from './language.js'
+import { setView } from './graph.js'
 
 let paletteItems = []
 let paletteIndex = 0
@@ -30,6 +31,9 @@ function paletteCommands() {
     { kind: 'action', title: t('palette.density'), run: () => setDensity(state.density === 'compact' ? 'comfortable' : 'compact') },
     { kind: 'action', title: t('palette.leased'), run: () => { state.leased = !state.leased; render() } },
     { kind: 'action', title: t('palette.help'), hint: '?', run: () => helpDialog.showModal() },
+    state.view === 'graph'
+      ? { kind: 'action', title: t('palette.board'), run: () => setView('board') }
+      : { kind: 'action', title: t('palette.graph'), run: () => setView('graph') },
   ]
   if (getCurrentTaskId()) {
     items.push({ kind: 'action', title: t('palette.deleteTask'), run: () => requestDelete(getCurrentTaskId()) })

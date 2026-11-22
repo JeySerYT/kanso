@@ -1,7 +1,7 @@
 {
   "app.title": "Kanso — доска",
   "app.titleCount": "Kanso — {count} задач",
-  "app.skip": "К задачам",
+  "app.skip": "К содержимому",
   "brand.version": "REV {version}",
 
   "sidebar.aria": "Панель управления",
@@ -14,6 +14,10 @@
   "connection.connecting": "подключение",
   "connection.live": "на связи",
   "connection.down": "переподключение",
+
+  "view.aria": "Вид",
+  "view.board": "Доска",
+  "view.graph": "Граф",
 
   "toolbar.aria": "Фильтры и вид",
   "toolbar.label": "Метка",
@@ -76,6 +80,17 @@
 
   "board.drop": "Перетащите задачу сюда",
   "board.nothingFound": "Ничего не найдено",
+
+  "graph.title": "Граф задач",
+  "graph.canvasAria": "Граф задач: узлов — {tasks}, связей — {links}",
+  "graph.selected": "Выбрана задача {id}: {title}",
+  "graph.keys": "Стрелки — выбрать задачу, Enter — открыть, плюс и минус — масштаб, 0 — вписать граф.",
+  "graph.legendAria": "Статусы узлов",
+  "graph.fit": "Вписать",
+  "graph.emptyEyebrow": "Пусто под фильтром",
+  "graph.empty": "Ни одна задача не проходит фильтр. Сбросьте фильтры или измените поиск.",
+  "graph.emptyReset": "Сбросить фильтры",
+  "graph.noEdges": "Связей пока нет. Добавьте блокировки в карточке задачи — стрелки покажут, что кого держит.",
 
   "compose.eyebrow": "Новая задача",
   "compose.title": "Что нужно сделать",
@@ -154,6 +169,8 @@
   "palette.leased": "Только задачи в аренде",
   "palette.help": "Горячие клавиши",
   "palette.deleteTask": "Удалить текущую задачу",
+  "palette.graph": "Открыть граф",
+  "palette.board": "Открыть доску",
   "palette.language": "Язык: {language}",
   "palette.kind.action": "команда",
   "palette.kind.sort": "сортировка",
@@ -202,6 +219,8 @@
   "announce.created": "Создана задача {id}",
   "announce.priority": "{id}: приоритет {priority}",
   "announce.renamed": "Задача {id} переименована",
+  "announce.viewGraph": "Открыт граф задач",
+  "announce.viewBoard": "Открыта доска",
 
   "time.now": "только что",
   "time.minutesAgo": "{minutes}м назад",

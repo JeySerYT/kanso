@@ -1,7 +1,7 @@
 {
   "app.title": "Kanso — board",
   "app.titleCount": "Kanso — {count} tasks",
-  "app.skip": "Skip to tasks",
+  "app.skip": "Skip to content",
   "brand.version": "REV {version}",
 
   "sidebar.aria": "Control panel",
@@ -14,6 +14,10 @@
   "connection.connecting": "connecting",
   "connection.live": "live",
   "connection.down": "reconnecting",
+
+  "view.aria": "View",
+  "view.board": "Board",
+  "view.graph": "Graph",
 
   "toolbar.aria": "Filters and view",
   "toolbar.label": "Label",
@@ -76,6 +80,17 @@
 
   "board.drop": "Drag a task here",
   "board.nothingFound": "Nothing found",
+
+  "graph.title": "Task graph",
+  "graph.canvasAria": "Task graph: nodes — {tasks}, edges — {links}",
+  "graph.selected": "Selected task {id}: {title}",
+  "graph.keys": "Arrow keys — select a task, Enter — open, plus and minus — zoom, 0 — fit the graph.",
+  "graph.legendAria": "Node statuses",
+  "graph.fit": "Fit",
+  "graph.emptyEyebrow": "Nothing under this filter",
+  "graph.empty": "No task matches the filter. Reset the filters or change the search.",
+  "graph.emptyReset": "Reset filters",
+  "graph.noEdges": "No links yet. Add blockers in the task drawer — arrows will show what holds what.",
 
   "compose.eyebrow": "New task",
   "compose.title": "What needs to be done",
@@ -154,6 +169,8 @@
   "palette.leased": "Leased tasks only",
   "palette.help": "Keyboard shortcuts",
   "palette.deleteTask": "Delete current task",
+  "palette.graph": "Open graph",
+  "palette.board": "Open board",
   "palette.language": "Language: {language}",
   "palette.kind.action": "command",
   "palette.kind.sort": "sort",
@@ -202,6 +219,8 @@
   "announce.created": "Created task {id}",
   "announce.priority": "{id}: priority {priority}",
   "announce.renamed": "Task {id} renamed",
+  "announce.viewGraph": "Graph view opened",
+  "announce.viewBoard": "Board view opened",
 
   "time.now": "just now",
   "time.minutesAgo": "{minutes}m ago",

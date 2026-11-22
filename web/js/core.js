@@ -66,6 +66,15 @@ export const newTask = document.querySelector('#new-task')
 export const emptyCreate = document.querySelector('#empty-create')
 export const paletteOpen = document.querySelector('#palette-open')
 export const helpOpen = document.querySelector('#help-open')
+export const viewBoard = document.querySelector('#view-board')
+export const viewGraph = document.querySelector('#view-graph')
+export const graphView = document.querySelector('#graph')
+export const graphCanvas = document.querySelector('#graph-canvas')
+export const graphTooltip = document.querySelector('#graph-tooltip')
+export const graphHint = document.querySelector('#graph-hint')
+export const graphEmpty = document.querySelector('#graph-empty')
+export const graphReset = document.querySelector('#graph-reset')
+export const graphFit = document.querySelector('#graph-fit')
 export const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
 
 export const state = {
@@ -83,6 +92,7 @@ export const state = {
   leased: false,
   sort: 'manual',
   density: 'comfortable',
+  view: 'board',
 }
 
 export const collator = () => new Intl.Collator(localeTag(), { sensitivity: 'base' })
@@ -249,3 +259,20 @@ export const markLocal = () => {
 export const msSinceMutation = () => Date.now() - lastMutation
 
 export const taskById = (id) => state.tasks.find((task) => task.id === id)
+
+// Общий фильтр доски и графа: проект, метка, приоритет, аренда, поиск.
+export function visibleTask(task) {
+  if (state.project !== 'all' && task.project !== state.project) return false
+  if (state.label && !task.labels.includes(state.label)) return false
+  if (state.priority !== '' && String(task.priority) !== state.priority) return false
+  if (state.leased && !task.claim) return false
+  if (!state.query) return true
+  const needle = state.query.toLowerCase()
+  return (
+    task.id.toLowerCase().includes(needle) ||
+    task.title.toLowerCase().includes(needle) ||
+    task.project.toLowerCase().includes(needle) ||
+    (task.branch ?? '').toLowerCase().includes(needle) ||
+    task.labels.some((label) => label.toLowerCase().includes(needle))
+  )
+}

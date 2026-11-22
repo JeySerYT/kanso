@@ -22,6 +22,7 @@ import {
   filterLeased,
   filterPriority,
   filterReset,
+  graphReset,
   helpDialog,
   helpOpen,
   hideToast,
@@ -39,6 +40,8 @@ import {
   taskById,
   taskDialog,
   toastClose,
+  viewBoard,
+  viewGraph,
 } from './core.js'
 import { loadBoard, loadProjects, render, startTitleEdit } from './board.js'
 import { resetFilters, setDensity, setSort } from './toolbar.js'
@@ -73,6 +76,7 @@ import { onEscapeDrag, onGlobalKeyDown } from './hotkeys.js'
 import { onLostPointerCapture, onPointerCancel, onPointerMove, onPointerUp } from './drag.js'
 import { connectEvents } from './events.js'
 import { changeLanguage } from './language.js'
+import { initGraph, initView, setView, syncViewFromLocation } from './graph.js'
 
 /* ---------- События ---------- */
 
@@ -135,6 +139,11 @@ densityToggle.addEventListener('click', () =>
 )
 paletteOpen.addEventListener('click', openPalette)
 helpOpen.addEventListener('click', () => helpDialog.showModal())
+
+viewBoard.addEventListener('click', () => setView('board'))
+viewGraph.addEventListener('click', () => setView('graph'))
+graphReset.addEventListener('click', resetFilters)
+window.addEventListener('hashchange', syncViewFromLocation)
 
 composeProject.addEventListener('change', () => {
   syncNewProjectField(true)
@@ -228,6 +237,8 @@ async function boot() {
     ? storage.get('kanso.sort', 'manual')
     : 'manual'
   setDensity(storage.get('kanso.density', 'comfortable'))
+  initGraph()
+  initView()
   await loadBoard()
   connectEvents()
   void loadProjects()

@@ -4,6 +4,7 @@ import {
   announce,
   board,
   composeDialog,
+  graphView,
   helpDialog,
   paletteDialog,
   search,
@@ -76,7 +77,7 @@ export function onGlobalKeyDown(event) {
     target instanceof HTMLElement &&
     (target.matches('input, textarea, select') || target.isContentEditable)
   if (typing || event.metaKey || event.ctrlKey || event.altKey) return
-  if (anyDialogOpen() || isDragging() || board.hidden) return
+  if (anyDialogOpen() || isDragging() || (board.hidden && graphView.hidden)) return
 
   const key = event.key
   if (key === '/') {
@@ -89,6 +90,9 @@ export function onGlobalKeyDown(event) {
   } else if (key.toLowerCase() === 'n' || key.toLowerCase() === 'c') {
     event.preventDefault()
     openCompose()
+  } else if (board.hidden) {
+    // В виде «Граф» стрелки и цифры обрабатывает canvas.
+    return
   } else if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
     event.preventDefault()
     focusCard(key.slice(5).toLowerCase())

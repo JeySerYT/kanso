@@ -1,9 +1,9 @@
 {
   "name": "kanso",
-  "version": "0.4.0-alpha.1",
+  "version": "0.5.0-alpha.1",
   "private": true,
   "type": "module",
-  "description": "Local kanban board with task leases for OpenCode sessions",
+  "description": "Локальная канбан-доска с арендой задач для сессий OpenCode",
   "bin": {
     "kanso": "./bin/kanso.js"
   },
@@ -13,5 +13,22 @@
   },
   "engines": {
     "node": ">=22.5"
-  }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JeySerYT/kanso.git"
+  },
+  "homepage": "https://github.com/JeySerYT/kanso#readme",
+  "bugs": {
+    "url": "https://github.com/JeySerYT/kanso/issues"
+  },
+  "keywords": [
+    "kanban",
+    "opencode",
+    "sqlite",
+    "cli",
+    "task-queue",
+    "lease"
+  ]
 }

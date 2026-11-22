@@ -11,6 +11,7 @@
   "sidebar.all": "All",
   "sidebar.language": "Language",
   "sidebar.languageAria": "Interface language",
+  "sidebar.effects": "Effects",
   "connection.connecting": "connecting",
   "connection.live": "live",
   "connection.down": "reconnecting",

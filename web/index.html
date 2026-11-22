@@ -26,7 +26,13 @@
       <aside class="sidebar" data-i18n-aria-label="sidebar.aria" aria-label="Панель управления">
         <div class="sidebar-head">
           <div class="brand">
-            <span class="brand-mark" aria-hidden="true"><span>簡</span></span>
+            <span class="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 32 32" width="16" height="16" focusable="false">
+                <rect x="6" y="8" width="5" height="16" fill="currentColor"></rect>
+                <rect x="13.5" y="13" width="5" height="11" fill="currentColor"></rect>
+                <rect x="21" y="10" width="5" height="14" fill="currentColor"></rect>
+              </svg>
+            </span>
             <span class="brand-name">Kanso</span>
           </div>
 
@@ -75,6 +81,19 @@
               <option value="en">English</option>
             </select>
           </label>
+
+          <div class="effects">
+            <span id="effects-label" data-i18n="sidebar.effects">Эффекты</span>
+            <button
+              class="effects-toggle"
+              id="effects-toggle"
+              type="button"
+              aria-labelledby="effects-label"
+              aria-pressed="true"
+            >
+              <span id="effects-value">ON</span>
+            </button>
+          </div>
 
           <p class="connection" id="connection" role="status" aria-live="polite">
             <span class="connection-dot" aria-hidden="true"></span>

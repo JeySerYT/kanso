@@ -75,6 +75,8 @@ export const graphHint = document.querySelector('#graph-hint')
 export const graphEmpty = document.querySelector('#graph-empty')
 export const graphReset = document.querySelector('#graph-reset')
 export const graphFit = document.querySelector('#graph-fit')
+export const effectsToggle = document.querySelector('#effects-toggle')
+export const effectsValue = document.querySelector('#effects-value')
 export const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
 
 export const state = {

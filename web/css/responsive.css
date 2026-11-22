@@ -76,6 +76,7 @@
   .sidebar-foot {
     flex-direction: row;
     align-items: center;
+    flex-wrap: wrap;
     gap: 12px;
     margin-top: 0;
     padding: 8px 0 0;

@@ -18,6 +18,7 @@ import {
   drawerStatus,
   drawerTitle,
   emptyCreate,
+  effectsToggle,
   filterLabel,
   filterLeased,
   filterPriority,
@@ -77,6 +78,7 @@ import { onLostPointerCapture, onPointerCancel, onPointerMove, onPointerUp } fro
 import { connectEvents } from './events.js'
 import { changeLanguage } from './language.js'
 import { initGraph, initView, setView, syncViewFromLocation } from './graph.js'
+import { initEffects, toggleEffects } from './effects.js'
 
 /* ---------- События ---------- */
 
@@ -143,6 +145,7 @@ helpOpen.addEventListener('click', () => helpDialog.showModal())
 viewBoard.addEventListener('click', () => setView('board'))
 viewGraph.addEventListener('click', () => setView('graph'))
 graphReset.addEventListener('click', resetFilters)
+effectsToggle.addEventListener('click', toggleEffects)
 window.addEventListener('hashchange', syncViewFromLocation)
 
 composeProject.addEventListener('change', () => {
@@ -237,6 +240,7 @@ async function boot() {
     ? storage.get('kanso.sort', 'manual')
     : 'manual'
   setDensity(storage.get('kanso.density', 'comfortable'))
+  initEffects()
   initGraph()
   initView()
   await loadBoard()
